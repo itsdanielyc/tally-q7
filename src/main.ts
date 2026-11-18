@@ -4,6 +4,7 @@ import { CURRENCIES, formatAmount, parseAmount } from "../domain/money";
 import { api } from "./api";
 import { element, field, messageOf, setFormError } from "./dom";
 import { connectImport } from "./import-panel";
+import { connectCategories } from "./category-panel";
 
 const displayDate = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 const currencyNames = new Intl.DisplayNames(["en"], { type: "currency" });
@@ -16,6 +17,8 @@ const deleteForm = element<HTMLFormElement>("delete-form");
 const settingsDialog = element<HTMLDialogElement>("settings-dialog");
 const settingsForm = element<HTMLFormElement>("settings-form");
 const transactionsBody = element<HTMLTableSectionElement>("transactions");
+const navigation = document.querySelectorAll<HTMLButtonElement>("[data-page]");
+const panels = document.querySelectorAll<HTMLElement>("[data-page-view]");
 let ledger: LedgerView | undefined;
 let editedId: string | undefined;
 let deletedId: string | undefined;
@@ -72,6 +75,8 @@ function renderLedger(view: LedgerView): void {
   addTransaction.disabled = false;
   openSettings.disabled = false;
   element<HTMLButtonElement>("import-csv").disabled = false;
+  navigation.forEach((button) => { button.disabled = false; });
+  renderCategories(view);
 }
 
 function openTransaction(transaction?: Transaction): void {
@@ -161,6 +166,15 @@ bindMutation(transactionForm, transactionDialog, () => ({
 bindMutation(deleteForm, deleteDialog, () => ({ type: "deleteTransaction", id: deletedId ?? "" }), "Transaction deleted.");
 bindMutation(settingsForm, settingsDialog, () => ({ type: "setCurrency", currency: field(settingsForm, "currency").value }), "Settings saved.");
 connectImport(currentLedger, renderLedger, setStatus);
+const renderCategories = connectCategories(currentLedger, renderLedger, setStatus);
+
+navigation.forEach((button) => button.addEventListener("click", () => {
+  navigation.forEach((item) => {
+    if (item === button) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+  });
+  panels.forEach((panel) => { panel.hidden = panel.dataset.pageView !== button.dataset.page; });
+}));
 
 void api.read().then(renderLedger).catch((error: unknown) => {
   element("entry-count").textContent = "Ledger unavailable";

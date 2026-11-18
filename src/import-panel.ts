@@ -41,11 +41,13 @@ export function connectImport(currentLedger: () => LedgerView, renderLedger: (le
     const duplicates = result?.duplicates ?? 0;
     element("import-duplicates").textContent = result ? `${duplicates} ${duplicates === 1 ? "duplicate" : "duplicates"} skipped.` : "";
     const rows = document.createDocumentFragment();
-    for (const { line, transaction } of result?.rows.slice(0, PREVIEW_ROW_LIMIT) ?? []) {
+    const categories = new Map(currentLedger().categories.map(({ id, name }) => [id, name]));
+    for (const { line, transaction, categoryId } of result?.rows.slice(0, PREVIEW_ROW_LIMIT) ?? []) {
       const row = document.createElement("tr");
       row.insertCell().textContent = String(line);
       row.insertCell().textContent = transaction.date;
       row.insertCell().textContent = transaction.payee;
+      row.insertCell().textContent = categories.get(categoryId ?? "") ?? "—";
       const amount = row.insertCell();
       amount.className = "amount";
       amount.textContent = formatAmount(transaction.amountMinor, currentLedger().currency);

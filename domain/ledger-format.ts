@@ -1,6 +1,7 @@
 import type { Category, Transaction } from "../contracts/ledger";
 import { requireDate } from "./calendar";
-import { categoryKey, compareDatesNewestFirst, SCHEMA_VERSION, type LedgerDocument } from "./ledger";
+import { categoryKey } from "./categories";
+import { compareDatesNewestFirst, SCHEMA_VERSION, type LedgerDocument } from "./ledger";
 import { requireCurrency } from "./money";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
 
@@ -65,7 +66,16 @@ export function decodeLedger(contents: string): LedgerDocument {
       return transaction;
     });
     transactions.sort(compareDatesNewestFirst);
-    return { schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions };
+    const ruleIds = new Set<string>();
+    const rules = requireList(document.rules ?? [], "Rules").map((value) => {
+      const rule = requireRecord(value, "Rule");
+      const id = requireText(rule.id, "a rule ID");
+      const categoryId = requireText(rule.categoryId, "a category ID");
+      if (!categoryIds.has(categoryId) || ruleIds.has(id)) throw new LedgerError("Invalid rule reference.");
+      ruleIds.add(id);
+      return { id, categoryId, contains: requireText(rule.contains, "payee text") };
+    });
+    return { schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions, rules };
   } catch (error) {
     const reason = error instanceof LedgerError ? error.message : "Invalid JSON.";
     throw new LedgerError(`The ledger could not be opened. ${reason}`);

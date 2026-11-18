@@ -5,6 +5,12 @@ export interface Category {
   readonly name: string;
 }
 
+export interface PayeeRule {
+  readonly id: string;
+  readonly contains: string;
+  readonly categoryId: string;
+}
+
 export interface Transaction {
   readonly id: string;
   readonly date: string;
@@ -26,13 +32,23 @@ export interface LedgerView {
   readonly currency: string;
   readonly categories: readonly Category[];
   readonly transactions: readonly Transaction[];
+  readonly rules: readonly PayeeRule[];
 }
+
+export type CategoryCommand =
+  | { readonly type: "saveCategory"; readonly id?: string; readonly name: string }
+  | { readonly type: "deleteCategory"; readonly id: string }
+  | { readonly type: "mergeCategories"; readonly id: string; readonly targetId: string }
+  | { readonly type: "addRule"; readonly contains: string; readonly categoryId: string }
+  | { readonly type: "deleteRule"; readonly id: string }
+  | { readonly type: "applyRules" };
 
 export type LedgerCommand =
   | { readonly type: "saveTransaction"; readonly id?: string; readonly transaction: TransactionDraft }
   | { readonly type: "deleteTransaction"; readonly id: string }
   | { readonly type: "setCurrency"; readonly currency: string }
-  | { readonly type: "importCsv"; readonly csv: CsvImportRequest };
+  | { readonly type: "importCsv"; readonly csv: CsvImportRequest }
+  | CategoryCommand;
 
 export interface LedgerOperations {
   read(): Promise<LedgerView>;

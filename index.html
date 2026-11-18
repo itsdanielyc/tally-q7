@@ -12,6 +12,10 @@
     <header class="app-bar">
       <div class="app-bar-inner">
         <div class="wordmark"><span class="brand-mark" aria-hidden="true">T</span> Tally</div>
+        <nav class="workspace-nav" aria-label="Workspace">
+          <button type="button" data-page="transactions" aria-current="page">Transactions</button>
+          <button type="button" data-page="categories" disabled>Categories</button>
+        </nav>
         <div class="app-tools">
           <span class="mock-badge" data-testid="backend-badge" hidden></span>
           <button class="app-button" id="open-settings" type="button" disabled>Settings</button>
@@ -20,6 +24,7 @@
     </header>
 
     <main class="workspace" data-geo="workspace">
+      <section data-page-view="transactions">
       <div class="page-heading" data-geo="heading">
         <h1>Transactions</h1>
         <div class="actions">
@@ -42,6 +47,22 @@
           </table>
         </div>
         <p class="empty-state" id="ledger-empty" hidden>No transactions yet.</p>
+      </section>
+      </section>
+      <section data-page-view="categories" hidden>
+        <div class="page-heading"><h1>Categories</h1><button class="primary" type="button" id="add-category">Add category</button></div>
+        <section class="ledger-card" aria-label="Category list">
+          <div class="table-scroll"><table aria-label="Categories"><thead><tr><th scope="col">Category</th><th scope="col">Transactions</th><th scope="col" class="row-actions">Actions</th></tr></thead><tbody id="category-rows"></tbody></table></div>
+          <p class="empty-state" id="categories-empty">No categories yet.</p>
+        </section>
+        <section class="ledger-card section-gap" aria-labelledby="rules-title">
+          <div class="panel-heading">
+            <h2 id="rules-title">Payee rules</h2>
+            <div class="actions"><button type="button" id="apply-rules">Apply rules</button><button type="button" id="add-rule">Add rule</button></div>
+          </div>
+          <div class="table-scroll"><table aria-label="Payee rules"><thead><tr><th scope="col">Payee contains</th><th scope="col">Use category</th><th scope="col" class="row-actions">Actions</th></tr></thead><tbody id="rule-rows"></tbody></table></div>
+          <p class="empty-state" id="rules-empty">No rules yet.</p>
+        </section>
       </section>
       <p id="app-status" class="status" role="status" aria-atomic="true"></p>
     </main>
@@ -117,7 +138,7 @@
           <p id="import-count" role="status" aria-live="polite"></p>
           <p id="import-duplicates"></p>
           <div class="table-scroll" id="preview-table" hidden>
-            <table aria-label="Accepted rows"><thead><tr><th scope="col">Line</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col" class="amount">Amount</th></tr></thead><tbody id="preview-rows"></tbody></table>
+            <table aria-label="Accepted rows"><thead><tr><th scope="col">Line</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Category</th><th scope="col" class="amount">Amount</th></tr></thead><tbody id="preview-rows"></tbody></table>
           </div>
           <div id="import-rejected" hidden><h3>Rejected rows</h3><ul id="import-errors"></ul></div>
         </section>
@@ -126,6 +147,27 @@
           <button type="button" data-close>Cancel</button>
           <button type="submit" id="confirm-import" class="primary" disabled>Confirm import</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="category-dialog" aria-labelledby="category-dialog-title">
+      <form id="category-form">
+        <h2 id="category-dialog-title">Add category</h2>
+        <p id="category-description" hidden></p>
+        <label id="category-name-field">Category name <input name="name" /></label>
+        <label id="merge-target-field" hidden>Merge into <select name="target"></select></label>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions"><button type="button" data-close>Cancel</button><button type="submit" id="save-category" class="primary">Save category</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="rule-dialog" aria-labelledby="rule-dialog-title">
+      <form id="rule-form">
+        <h2 id="rule-dialog-title">Add payee rule</h2>
+        <label>Payee contains <input name="contains" required /></label>
+        <label>Use category <select name="category" required></select></label>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions"><button type="button" data-close>Cancel</button><button type="submit" class="primary">Save rule</button></div>
       </form>
     </dialog>
   </body>

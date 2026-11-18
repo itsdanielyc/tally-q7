@@ -1,6 +1,7 @@
 import { CSV_DELIMITERS, DATE_ORDERS, type AmountMapping, type CsvImportRequest, type DateOrder } from "../contracts/csv";
 import type { LedgerView, TransactionDraft } from "../contracts/ledger";
 import { requireDate } from "./calendar";
+import { ruleMatcher } from "./categories";
 import { MAX_CSV_BYTES, parseCsv } from "./csv";
 import { minorDigits, parseAmount } from "./money";
 import { LedgerError, requireRecord, requireText } from "./validation";
@@ -11,7 +12,7 @@ const GROUPS = /^\d{1,3}(?:[.,]\d{3})+$/;
 const CENTURY_PIVOT = 70;
 
 export interface ImportPreview {
-  readonly rows: readonly { readonly line: number; readonly transaction: TransactionDraft }[];
+  readonly rows: readonly { readonly line: number; readonly transaction: TransactionDraft; readonly categoryId: string | null }[];
   readonly errors: readonly { readonly line: number; readonly reason: string }[];
   readonly duplicates: number;
 }
@@ -93,7 +94,8 @@ export function previewImport(ledger: LedgerView, request: CsvImportRequest): Im
   if (new Set(columns).size !== columns.length) throw new LedgerError("Choose distinct columns for each field.");
 
   const seen = new Set(ledger.transactions.map(transactionKey));
-  const rows: { line: number; transaction: TransactionDraft }[] = [];
+  const matchCategory = ruleMatcher(ledger.rules);
+  const rows: { line: number; transaction: TransactionDraft; categoryId: string | null }[] = [];
   const errors: { line: number; reason: string }[] = [];
   let duplicates = 0;
   for (let index = headerIndex + 1; index < records.length; index++) {
@@ -110,7 +112,7 @@ export function previewImport(ledger: LedgerView, request: CsvImportRequest): Im
       const key = transactionKey(transaction);
       if (seen.has(key)) { duplicates++; continue; }
       seen.add(key);
-      rows.push({ line, transaction });
+      rows.push({ line, transaction, categoryId: matchCategory(transaction.payee) });
     } catch (error) {
       if (!(error instanceof LedgerError)) throw error;
       errors.push({ line, reason: error.message });

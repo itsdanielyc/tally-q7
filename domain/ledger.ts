@@ -1,5 +1,6 @@
 import type { Category, LedgerCommand, LedgerOperations, LedgerView, Transaction } from "../contracts/ledger";
 import { requireDate } from "./calendar";
+import { categoryKey, changeCategories } from "./categories";
 import { previewImport } from "./import-ledger";
 import { DEFAULT_CURRENCY, requireCurrency } from "./money";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
@@ -16,7 +17,7 @@ export interface LedgerStore {
 }
 
 export function emptyLedger(): LedgerDocument {
-  return { schemaVersion: SCHEMA_VERSION, currency: DEFAULT_CURRENCY, categories: [], transactions: [] };
+  return { schemaVersion: SCHEMA_VERSION, currency: DEFAULT_CURRENCY, categories: [], transactions: [], rules: [] };
 }
 
 export function memoryLedgerStore(): LedgerStore {
@@ -25,10 +26,6 @@ export function memoryLedgerStore(): LedgerStore {
     async load() { return document; },
     async save(updated) { document = updated; },
   };
-}
-
-export function categoryKey(name: string): string {
-  return name.trim().toLocaleLowerCase("en");
 }
 
 export function compareDatesNewestFirst(left: Transaction, right: Transaction): number {
@@ -79,8 +76,8 @@ function applyChange(document: LedgerDocument, command: LedgerCommand): LedgerDo
     case "importCsv": {
       const preview = previewImport(document, command.csv);
       if (preview.rows.length === 0) return document;
-      const imported: Transaction[] = preview.rows.map(({ transaction }) => ({
-        id: crypto.randomUUID(), date: transaction.date, payee: transaction.payee, amountMinor: transaction.amountMinor, categoryId: null, note: "",
+      const imported: Transaction[] = preview.rows.map(({ transaction, categoryId }) => ({
+        id: crypto.randomUUID(), date: transaction.date, payee: transaction.payee, amountMinor: transaction.amountMinor, categoryId, note: transaction.note,
       }));
       const transactions = imported.concat(document.transactions).sort(compareDatesNewestFirst);
       return { ...document, transactions };
@@ -91,12 +88,14 @@ function applyChange(document: LedgerDocument, command: LedgerCommand): LedgerDo
       if (document.transactions.length > 0) throw new LedgerError("Currency can only change when the ledger is empty.");
       return { ...document, currency };
     }
+    case "saveCategory": case "deleteCategory": case "mergeCategories":
+    case "addRule": case "deleteRule": case "applyRules": return changeCategories(document, command);
     default: throw new LedgerError("Unknown ledger command.");
   }
 }
 
-function viewOf({ currency, categories, transactions }: LedgerDocument): LedgerView {
-  return { currency, categories, transactions };
+function viewOf({ currency, categories, transactions, rules }: LedgerDocument): LedgerView {
+  return { currency, categories, transactions, rules };
 }
 
 /** Serialises loads and saves, publishing a new view only after its write succeeds. */
