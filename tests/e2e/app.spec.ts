@@ -1,82 +1,38 @@
-// L6: the real shell. Playwright launches the built app (out/, from
-// `npm run build`) with Electron itself and drives its first window.
-// Everything here crosses the preload bridge and IPC to the main process,
-// which no browser-mode test can do.
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
-import { mkdirSync, readFileSync } from "node:fs";
+import { expect, test } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { greeting } from "../../contracts/greet";
-import type { PlatformInfo } from "../../electron/bridge";
+import { DEFAULT_CURRENCY } from "../../domain/money";
+import { transactionDraft } from "../fixtures/ledger";
+import { withTally } from "./tally";
 
-let app: ElectronApplication;
-let win: Page;
-const consoleErrors: string[] = [];
-
-test.describe.configure({ mode: "serial" });
-
-test.beforeAll(async () => {
-  app = await electron.launch({ args: ["."], cwd: process.cwd() });
-  win = await app.firstWindow();
-  win.on("console", (m) => {
-    if (m.type() === "error") consoleErrors.push(m.text());
-  });
-  await win.waitForLoadState("domcontentloaded");
-});
-
-test.afterAll(async () => {
-  await app?.close();
-});
-
-test.describe("tally in the real shell", () => {
-  test("renders the main window with the native backend", async () => {
-    // The title comes from index.html, so a renamed app is checked against its
-    // own page, never a hard-coded string.
-    const html = readFileSync("index.html", "utf8");
-    const title = /<title>(.*?)<\/title>/.exec(html)?.[1];
-    expect(title).toBeTruthy();
-    await expect(win).toHaveTitle(title!);
-    await expect(win.locator("h1")).toHaveText("Welcome to Electron");
-    await expect(win.locator("#greet-input")).toBeVisible();
-    // The badge proves the UI is talking to the main process, not the mock.
-    await expect(win.getByTestId("backend-badge")).toHaveText("native");
-    // contextIsolation and the sandbox: the page sees the bridge, not Node.
-    const exposed = await win.evaluate(() => ({
-      bridge: typeof window.electronBridge,
+test("loads the sandboxed native window with the shared ledger contract", async ({}, testInfo) => {
+  await withTally(testInfo.outputPath("profile"), async (page, app) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+    await expect(page).toHaveTitle("Tally");
+    await expect(page.getByRole("heading", { name: "Transactions" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add transaction" })).toBeEnabled();
+    await expect(page.getByTestId("backend-badge")).toBeHidden();
+    const context = await page.evaluate(() => ({
+      kind: window.electronBridge?.kind,
       require: typeof (window as unknown as { require?: unknown }).require,
       process: typeof (window as unknown as { process?: unknown }).process,
     }));
-    expect(exposed).toEqual({ bridge: "object", require: "undefined", process: "undefined" });
-  });
+    expect(context).toEqual({ kind: "native", require: "undefined", process: "undefined" });
+    const ledger = await page.evaluate(() => window.electronBridge!.read());
+    expect(ledger.currency).toBe(DEFAULT_CURRENCY);
+    expect(ledger.transactions).toEqual([]);
 
-  test("round-trips a call to the main process and matches the shared contract", async () => {
-    await win.locator("#greet-input").fill("Keel");
-    await win.locator("#greet-form button[type=submit]").click();
-    await expect(win.locator("#greet-msg")).toHaveText(greeting("Keel"));
-  });
+    const main = await app.evaluate(({ app: electronApp }) => ({ os: process.platform, arch: process.arch, packaged: electronApp.isPackaged }));
+    expect(main).toEqual({ os: process.platform, arch: process.arch, packaged: false });
+    expect(await page.evaluate(() => window.electronBridge!.platformInfo())).toMatchObject(main);
 
-  test("reports the platform from the main process and saves a screenshot named after it", async () => {
-    // Ask the main process directly, then the same question through the bridge.
-    const main = await app.evaluate(({ app: electronApp }) => ({
-      os: process.platform,
-      arch: process.arch,
-      packaged: electronApp.isPackaged,
-    }));
-    expect(["win32", "darwin", "linux"]).toContain(main.os);
-    expect(["x64", "arm64"]).toContain(main.arch);
-    expect(main.packaged).toBe(false);
-
-    const viaBridge = (await win.evaluate(() => window.electronBridge!.platformInfo())) as PlatformInfo;
-    expect(viaBridge).toMatchObject(main);
-    await expect(win.getByTestId("platform")).toHaveText(`${main.os} / ${main.arch}`);
-
-    const dir = join(process.cwd(), "artifacts", "e2e");
-    mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${main.os}-${main.arch}.png`);
-    await win.screenshot({ path: file });
-    console.log(`[e2e] screenshot saved: ${file}`);
-  });
-
-  test("logged no console errors (CSP violations, failed loads)", async () => {
+    await page.evaluate((transaction) => window.electronBridge!.commit({ type: "saveTransaction", transaction }), transactionDraft());
+    await page.reload();
+    await expect(page.getByRole("row").filter({ hasText: "Corner Market" })).toContainText("Weekly groceries");
+    const directory = join(process.cwd(), "artifacts", "e2e");
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: join(directory, `${main.os}-${main.arch}.png`) });
     expect(consoleErrors).toEqual([]);
   });
 });

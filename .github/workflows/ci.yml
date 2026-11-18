@@ -39,6 +39,7 @@ jobs:
       - name: Type-check renderer, main process and suites
         run: npm run typecheck
       - run: npm run test:unit
+      - run: npm run test:contracts
 
   ui:
     name: ui (${{ matrix.os }})
@@ -116,6 +117,13 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - name: Domain, adapter and file-store checks
+        shell: bash
+        run: |
+          npm run test:unit
+          npm run test:contracts
+          npm run test:integration
 
       - name: Electron binary
         # Electron 45 downloads its binary on first use, not at npm ci; fetch

@@ -2,44 +2,94 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*"
-    />
-    <link rel="stylesheet" href="/src/styles.css" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws://localhost:1420; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
     <title>Tally</title>
-    <script type="module" src="/src/main.ts" defer></script>
+    <script type="module" src="/src/main.ts"></script>
   </head>
-
   <body>
-    <main class="container" data-geo="main">
-      <h1 data-geo="title">Welcome to Electron</h1>
-
-      <div class="row" data-geo="logos">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://www.electronjs.org" target="_blank">
-          <img src="/src/assets/electron.svg" class="logo electron" alt="Electron logo" />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img src="/src/assets/typescript.svg" class="logo typescript" alt="typescript logo" />
-        </a>
+    <header class="app-bar">
+      <div class="app-bar-inner">
+        <div class="wordmark"><span class="brand-mark" aria-hidden="true">T</span> Tally</div>
+        <div class="app-tools">
+          <span class="mock-badge" data-testid="backend-badge" hidden></span>
+          <button class="app-button" id="open-settings" type="button" disabled>Settings</button>
+        </div>
       </div>
-      <p>Click on the Electron logo to learn more about the framework</p>
+    </header>
 
-      <form class="row" id="greet-form" data-geo="form" aria-label="Greet">
-        <input id="greet-input" placeholder="Enter a name..." aria-label="Name" />
-        <button type="submit">Greet</button>
-        <button type="button" id="clear-btn">Clear</button>
-      </form>
-      <p id="greet-msg" data-geo="message" aria-live="polite"></p>
+    <main class="workspace" data-geo="workspace">
+      <div class="page-heading" data-geo="heading">
+        <h1>Transactions</h1>
+        <div class="actions">
+          <button class="primary" id="add-transaction" type="button" disabled>Add transaction</button>
+        </div>
+      </div>
 
-      <footer class="meta" data-geo="meta">
-        <span>backend: <strong id="backend-badge" data-testid="backend-badge">…</strong></span>
-        <span>platform: <span id="platform" data-testid="platform">…</span></span>
-      </footer>
+      <section class="ledger-card" aria-labelledby="ledger-title" data-geo="ledger">
+        <div class="panel-heading">
+          <h2 id="ledger-title">Ledger</h2>
+          <p id="entry-count">Loading…</p>
+        </div>
+        <div class="table-scroll">
+          <table aria-label="Transactions">
+            <thead>
+              <tr><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Category</th><th scope="col" id="amount-heading" class="amount">Amount</th><th scope="col" class="row-actions">Actions</th></tr>
+            </thead>
+            <tbody id="transactions"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="ledger-empty" hidden>No transactions yet.</p>
+      </section>
+      <p id="app-status" class="status" role="status" aria-atomic="true"></p>
     </main>
+
+    <dialog id="transaction-dialog" aria-labelledby="transaction-title">
+      <form id="transaction-form">
+        <h2 id="transaction-title">Add transaction</h2>
+        <div class="field-pair">
+          <label>Date <input name="date" type="date" required /></label>
+          <label><span id="amount-label">Amount</span>
+            <input name="amount" inputmode="decimal" required placeholder="-12.50" aria-describedby="amount-hint" />
+          </label>
+        </div>
+        <p class="field-hint" id="amount-hint">Use a minus sign for spending.</p>
+        <label>Payee <input name="payee" type="text" required /></label>
+        <label>Category <span class="optional">(optional)</span> <input name="category" list="category-options" /></label>
+        <datalist id="category-options"></datalist>
+        <label>Note <span class="optional">(optional)</span> <textarea name="note" rows="2"></textarea></label>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions">
+          <button type="button" data-close>Cancel</button>
+          <button type="submit" class="primary">Save transaction</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="delete-dialog" aria-labelledby="delete-title">
+      <form id="delete-form">
+        <h2 id="delete-title">Delete transaction?</h2>
+        <p id="delete-description"></p>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions">
+          <button type="button" data-close>Cancel</button>
+          <button type="submit" class="danger">Delete transaction</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
+      <form id="settings-form">
+        <h2 id="settings-title">Settings</h2>
+        <label>Ledger currency <select name="currency" aria-describedby="currency-hint"></select></label>
+        <p class="field-hint" id="currency-hint">Currency can change while the ledger is empty.</p>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions">
+          <button type="button" data-close>Close</button>
+          <button type="submit" class="primary">Save settings</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

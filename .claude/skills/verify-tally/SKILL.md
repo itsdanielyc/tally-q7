@@ -16,8 +16,8 @@ Read cold, mid-task. Every command below is real for this repository.
   fetches it ahead of time (CI does this in its own step).
 - Dev loop with hot reload: `npm run dev` (electron-vite); renderer alone
   in a browser: `npm run dev:web` (Vite on port 1420).
-- Ready means: the main window titled "Tally" is visible and the backend
-  badge reads "native".
+- Ready means: the main window titled "Tally" shows Transactions and enables
+  Add transaction. The browser shows a mock badge.
 
 ## Doctor (read-only)
 
@@ -29,9 +29,9 @@ Read cold, mid-task. Every command below is real for this repository.
 
 ## Drive
 
-- Real shell: `npm run test:e2e` launches `out/` through Playwright and
-  checks the badge, the greeting round trip and the console; add journeys
-  under `tests/e2e/`.
+- Real shell: `npm run test:e2e` launches `out/` through Playwright, verifies
+  the sandboxed IPC contract, and saves and reopens a transaction in an
+  isolated test profile under `test-results/e2e/`.
 - Browser against the mock: `npm run test:ui` (chromium); the badge must
   read "mock".
 - Stable handles: `data-testid` attributes and ARIA roles, never pixels.
