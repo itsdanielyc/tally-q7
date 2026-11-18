@@ -77,6 +77,10 @@ h2 { font-size: 18px; line-height: 26px; letter-spacing: -.015em; }
 }
 .ledger-card { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
 .section-gap { margin-top: 18px; }
+.filter-panel { display: grid; gap: 12px; margin-bottom: 16px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.filter-top { display: grid; grid-template-columns: minmax(160px, 2fr) minmax(120px, 1fr) auto; align-items: end; gap: 12px; }
+.filter-panel summary { width: fit-content; color: var(--accent); cursor: pointer; font-weight: 600; }
+.filter-ranges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; gap: 12px; }
 .month-controls input { width: auto; margin: 0; }
 .month-controls button { font-size: 21px; line-height: 1; }
 .summary-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
@@ -155,6 +159,7 @@ textarea { resize: vertical; }
   .app-bar-inner, .workspace { padding-inline: 20px; }
   th, td { padding-inline: 10px; }
   .actions { flex-wrap: wrap; }
+  .filter-ranges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 540px) {
   .field-trio { grid-template-columns: 1fr; }

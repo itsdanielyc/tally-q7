@@ -38,13 +38,17 @@ function saveCategory(document: LedgerDocument, nameInput: string, id?: string):
 
 // Time and space O(t + r + c), for transactions, rules and categories respectively.
 function removeCategory(document: LedgerDocument, id: string, targetId?: string): LedgerDocument {
-  findCategory(document, id);
+  const category = findCategory(document, id);
   if (targetId !== undefined) {
     if (targetId === id) throw new LedgerError("Choose a different category to merge into.");
     findCategory(document, targetId);
   }
-  const transactions = document.transactions.map((transaction) => transaction.categoryId === id
-    ? { ...transaction, categoryId: targetId ?? null } : transaction);
+  const affectedTransactionIds: string[] = [];
+  const transactions = document.transactions.map((transaction) => {
+    if (transaction.categoryId !== id) return transaction;
+    affectedTransactionIds.push(transaction.id);
+    return { ...transaction, categoryId: targetId ?? null };
+  });
   const rules = targetId === undefined
     ? document.rules.filter((rule) => rule.categoryId !== id)
     : document.rules.map((rule) => rule.categoryId === id ? { ...rule, categoryId: targetId } : rule);
@@ -54,7 +58,13 @@ function removeCategory(document: LedgerDocument, id: string, targetId?: string)
     if (budget.categoryId !== id) budgets.push(budget);
     else if (targetId !== undefined && !targetMonths.has(budget.month)) budgets.push({ ...budget, categoryId: targetId });
   }
-  return { ...document, categories: document.categories.filter((category) => category.id !== id), transactions, rules, budgets };
+  return {
+    ...document, categories: document.categories.filter((item) => item.id !== id), transactions, rules, budgets,
+    undo: {
+      action: targetId === undefined ? "deleteCategory" : "mergeCategories", category, index: document.categories.indexOf(category), affectedTransactionIds,
+      rules: document.rules, budgets: document.budgets,
+    },
+  };
 }
 
 // Time O(n * r * s) for n entries, r rules and the substring search cost s; space O(n + r).
@@ -83,9 +93,11 @@ export function changeCategories(document: LedgerDocument, command: CategoryComm
       return { ...document, rules: [...document.rules, { id: crypto.randomUUID(), contains, categoryId: category.id }] };
     }
     case "deleteRule": {
-      const rules = document.rules.filter(({ id }) => id !== command.id);
-      if (rules.length === document.rules.length) throw new LedgerError("That rule no longer exists.");
-      return { ...document, rules };
+      const index = document.rules.findIndex(({ id }) => id === command.id);
+      if (index < 0) throw new LedgerError("That rule no longer exists.");
+      const rules = document.rules.slice();
+      const [rule] = rules.splice(index, 1);
+      return { ...document, rules, undo: { action: "deleteRule", index, rule } };
     }
     case "applyRules": return applyRules(document);
   }

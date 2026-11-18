@@ -42,15 +42,17 @@ export function connectImport(currentLedger: () => LedgerView, renderLedger: (le
     element("import-duplicates").textContent = result ? `${duplicates} ${duplicates === 1 ? "duplicate" : "duplicates"} skipped.` : "";
     const rows = document.createDocumentFragment();
     const categories = new Map(currentLedger().categories.map(({ id, name }) => [id, name]));
+    const currency = result?.currency ?? currentLedger().currency;
+    element("preview-amount-heading").textContent = `Amount (${currency})`;
     for (const { line, transaction, categoryId } of result?.rows.slice(0, PREVIEW_ROW_LIMIT) ?? []) {
       const row = document.createElement("tr");
       row.insertCell().textContent = String(line);
       row.insertCell().textContent = transaction.date;
       row.insertCell().textContent = transaction.payee;
-      row.insertCell().textContent = categories.get(categoryId ?? "") ?? "—";
+      row.insertCell().textContent = categories.get(categoryId ?? "") ?? (transaction.category || "—");
       const amount = row.insertCell();
       amount.className = "amount";
-      amount.textContent = formatAmount(transaction.amountMinor, currentLedger().currency);
+      amount.textContent = formatAmount(transaction.amountMinor, currency);
       rows.append(row);
     }
     element("preview-rows").replaceChildren(rows);
