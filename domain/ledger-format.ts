@@ -3,6 +3,7 @@ import { requireDate } from "./calendar";
 import { categoryKey } from "./categories";
 import { compareDatesNewestFirst, SCHEMA_VERSION, type LedgerDocument } from "./ledger";
 import { requireCurrency } from "./money";
+import { requireMonth } from "./summary";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
 
 function requireList(value: unknown, label: string): unknown[] {
@@ -75,7 +76,18 @@ export function decodeLedger(contents: string): LedgerDocument {
       ruleIds.add(id);
       return { id, categoryId, contains: requireText(rule.contains, "payee text") };
     });
-    return { schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions, rules };
+    const budgetKeys = new Set<string>();
+    const budgets = requireList(document.budgets ?? [], "Budgets").map((value) => {
+      const budget = requireRecord(value, "Budget");
+      const categoryId = requireText(budget.categoryId, "a category ID");
+      const month = requireMonth(budget.month);
+      const amountMinor = requireMinorUnits(budget.amountMinor);
+      const key = JSON.stringify([categoryId, month]);
+      if (!categoryIds.has(categoryId) || amountMinor < 0 || budgetKeys.has(key)) throw new LedgerError("Invalid category budget.");
+      budgetKeys.add(key);
+      return { categoryId, month, amountMinor };
+    });
+    return { schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions, rules, budgets };
   } catch (error) {
     const reason = error instanceof LedgerError ? error.message : "Invalid JSON.";
     throw new LedgerError(`The ledger could not be opened. ${reason}`);

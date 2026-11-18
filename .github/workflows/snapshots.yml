@@ -102,7 +102,21 @@ jobs:
           path: incoming
       - name: Merge the three capture sets
         run: |
-          for d in incoming/snapshots-*; do cp -R "$d"/. tests/ui/__snapshots__/; done
+          for capture in incoming/snapshots-*; do
+            case "$capture" in
+              */snapshots-ubuntu-*) platform=linux ;;
+              */snapshots-windows-*) platform=win32 ;;
+              */snapshots-macos-*) platform=darwin ;;
+              *) echo "Unknown snapshot runner: $capture" >&2; exit 1 ;;
+            esac
+            # Each checkout includes the previous PNGs for other runners.
+            # Only this runner's own pixels are evidence from this capture.
+            while IFS= read -r -d '' file; do
+              target="tests/ui/__snapshots__/${file#"$capture"/}"
+              mkdir -p "$(dirname "$target")"
+              cp -- "$file" "$target"
+            done < <(find "$capture" -type f \( -name "*-$platform.png" -o -name '*.yml' -o -name '*.json' \) -print0)
+          done
           git status --short tests/ui/__snapshots__
       - name: Commit the baselines
         env:

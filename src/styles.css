@@ -77,6 +77,17 @@ h2 { font-size: 18px; line-height: 26px; letter-spacing: -.015em; }
 }
 .ledger-card { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
 .section-gap { margin-top: 18px; }
+.month-controls input { width: auto; margin: 0; }
+.month-controls button { font-size: 21px; line-height: 1; }
+.summary-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+.summary-totals div { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--surface); }
+.summary-totals dt { color: var(--muted); }
+.summary-totals dd { margin: 5px 0 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.budget-table td:nth-child(2) { width: auto; }
+#budget-currency { color: var(--muted); }
+.over-budget { color: var(--danger); }
+progress { display: block; width: min(100%, 120px); height: 7px; margin-top: 5px; accent-color: var(--accent); }
+progress.over-budget { accent-color: var(--danger); }
 .panel-heading {
   min-height: 58px;
   padding: 12px 20px;

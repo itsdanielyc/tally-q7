@@ -7,7 +7,7 @@ import { transactionDraft } from "../fixtures/ledger";
 describe.each([mockLedgerApi(), nativeLedgerApi(memoryLedgerStore(), async () => null)])("$kind contract", (api) => {
   it("labels its implementation and returns the same public transaction fields", async () => {
     expect(["native", "mock"]).toContain(api.kind);
-    expect(await api.read()).toEqual({ currency: "USD", categories: [], transactions: [], rules: [] });
+    expect(await api.read()).toEqual({ currency: "USD", categories: [], transactions: [], rules: [], budgets: [] });
     const recorded = await api.commit({ type: "saveTransaction", transaction: transactionDraft({ payee: " Corner Market " }) });
     const category = recorded.categories[0];
     expect(category.name).toBe("Food");

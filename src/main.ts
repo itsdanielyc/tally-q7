@@ -5,6 +5,7 @@ import { api } from "./api";
 import { element, field, messageOf, setFormError } from "./dom";
 import { connectImport } from "./import-panel";
 import { connectCategories } from "./category-panel";
+import { connectSummary } from "./summary-panel";
 
 const displayDate = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 const currencyNames = new Intl.DisplayNames(["en"], { type: "currency" });
@@ -76,7 +77,7 @@ function renderLedger(view: LedgerView): void {
   openSettings.disabled = false;
   element<HTMLButtonElement>("import-csv").disabled = false;
   navigation.forEach((button) => { button.disabled = false; });
-  renderCategories(view);
+  renderActivePage(view);
 }
 
 function openTransaction(transaction?: Transaction): void {
@@ -145,7 +146,7 @@ openSettings.addEventListener("click", () => {
   const select = field<HTMLSelectElement>(settingsForm, "currency");
   select.replaceChildren(...CURRENCIES.map((currency) => new Option(`${currency} · ${currencyNames.of(currency)}`, currency)));
   select.value = view.currency;
-  select.disabled = view.transactions.length !== 0;
+  select.disabled = view.transactions.length !== 0 || view.budgets.length !== 0;
   setFormError(settingsForm, "");
   settingsDialog.showModal();
 });
@@ -167,6 +168,13 @@ bindMutation(deleteForm, deleteDialog, () => ({ type: "deleteTransaction", id: d
 bindMutation(settingsForm, settingsDialog, () => ({ type: "setCurrency", currency: field(settingsForm, "currency").value }), "Settings saved.");
 connectImport(currentLedger, renderLedger, setStatus);
 const renderCategories = connectCategories(currentLedger, renderLedger, setStatus);
+const renderSummary = connectSummary(currentLedger, renderLedger, setStatus);
+
+function renderActivePage(view: LedgerView): void {
+  const active = document.querySelector<HTMLButtonElement>("[data-page][aria-current=page]")?.dataset.page;
+  if (active === "categories") renderCategories(view);
+  if (active === "summary") renderSummary(view);
+}
 
 navigation.forEach((button) => button.addEventListener("click", () => {
   navigation.forEach((item) => {
@@ -174,6 +182,7 @@ navigation.forEach((button) => button.addEventListener("click", () => {
     else item.removeAttribute("aria-current");
   });
   panels.forEach((panel) => { panel.hidden = panel.dataset.pageView !== button.dataset.page; });
+  renderActivePage(currentLedger());
 }));
 
 void api.read().then(renderLedger).catch((error: unknown) => {

@@ -15,6 +15,7 @@
         <nav class="workspace-nav" aria-label="Workspace">
           <button type="button" data-page="transactions" aria-current="page">Transactions</button>
           <button type="button" data-page="categories" disabled>Categories</button>
+          <button type="button" data-page="summary" disabled>Summary</button>
         </nav>
         <div class="app-tools">
           <span class="mock-badge" data-testid="backend-badge" hidden></span>
@@ -62,6 +63,29 @@
           </div>
           <div class="table-scroll"><table aria-label="Payee rules"><thead><tr><th scope="col">Payee contains</th><th scope="col">Use category</th><th scope="col" class="row-actions">Actions</th></tr></thead><tbody id="rule-rows"></tbody></table></div>
           <p class="empty-state" id="rules-empty">No rules yet.</p>
+        </section>
+      </section>
+      <section data-page-view="summary" hidden>
+        <div class="page-heading">
+          <h1>Monthly summary</h1>
+          <div class="actions month-controls">
+            <button id="previous-month" type="button" aria-label="Previous month">‹</button>
+            <input id="summary-month" type="month" aria-label="Month" min="0001-01" max="9999-12" required />
+            <button id="next-month" type="button" aria-label="Next month">›</button>
+          </div>
+        </div>
+        <dl class="summary-totals" aria-label="Monthly totals">
+          <div><dt>Income</dt><dd id="month-income"></dd></div>
+          <div><dt>Spending</dt><dd id="month-spending"></dd></div>
+          <div><dt>Balance</dt><dd id="month-balance"></dd></div>
+        </dl>
+        <section class="ledger-card" aria-labelledby="budget-title">
+          <div class="panel-heading"><h2 id="budget-title">Category budgets</h2><p id="budget-currency"></p></div>
+          <div class="table-scroll"><table class="budget-table" aria-label="Category budgets">
+            <thead><tr><th scope="col">Category</th><th scope="col" class="amount">Income</th><th scope="col" class="amount">Spending</th><th scope="col" class="amount">Budget</th><th scope="col">Remaining</th><th scope="col" class="row-actions">Actions</th></tr></thead>
+            <tbody id="budget-rows"></tbody>
+          </table></div>
+          <p class="empty-state" id="budget-empty">Add a category or record a transaction to see a monthly breakdown.</p>
         </section>
       </section>
       <p id="app-status" class="status" role="status" aria-atomic="true"></p>
@@ -168,6 +192,16 @@
         <label>Use category <select name="category" required></select></label>
         <p class="form-error" role="alert" hidden></p>
         <div class="actions dialog-actions"><button type="button" data-close>Cancel</button><button type="submit" class="primary">Save rule</button></div>
+      </form>
+    </dialog>
+    <dialog id="budget-dialog" aria-labelledby="budget-dialog-title">
+      <form id="budget-form">
+        <h2 id="budget-dialog-title">Edit monthly budget</h2>
+        <p id="budget-description"></p>
+        <label><span id="budget-amount-label">Monthly budget</span> <input name="budget" inputmode="decimal" aria-describedby="budget-hint" /></label>
+        <p class="field-hint" id="budget-hint">Leave the amount empty to clear this month's budget.</p>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions"><button type="button" data-close>Cancel</button><button type="submit" class="primary">Save budget</button></div>
       </form>
     </dialog>
   </body>

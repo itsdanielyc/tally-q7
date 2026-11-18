@@ -79,3 +79,11 @@ it("writes a 2,000-row import within five seconds as one transaction and nothing
   expect((await failure.read()).transactions).toHaveLength(count);
   expect(await readFile(join(directory, "ledger.json"), "utf8")).toBe(before);
 });
+
+it("restores the month-specific budget from disk in a new service", async () => {
+  const store = openLedgerStore(directory);
+  const ledger = createLedgerService(store);
+  const { categories: [food] } = await ledger.commit({ type: "saveCategory", name: "Food" });
+  await ledger.commit({ type: "setBudget", categoryId: food.id, month: "2026-11", amountMinor: 12_345 });
+  expect((await createLedgerService(openLedgerStore(directory)).read()).budgets).toEqual([{ categoryId: food.id, month: "2026-11", amountMinor: 12_345 }]);
+});
