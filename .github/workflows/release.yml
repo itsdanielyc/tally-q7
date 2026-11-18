@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    name: Require green installers for this exact commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check version, main ancestry and pre-tag evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            node scripts/release-version.mjs "$GITHUB_REF_NAME"
+          else
+            node scripts/release-version.mjs
+          fi
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          approved_run=$(gh run list --workflow installers.yml --commit "$GITHUB_SHA" --branch main \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$approved_run" ]; then
+            echo "No green installers run on main for $GITHUB_SHA." >&2
+            exit 1
+          fi
+          echo "Installers run $approved_run passed on $GITHUB_SHA."
+
+  rebuild:
+    name: Rebuild and test the tagged bundles
+    needs: [gate]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    uses: ./.github/workflows/installers.yml
+
+  publish:
+    name: Publish the tested bundles
+    needs: [rebuild]
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-candidate
+          path: candidate
+      - name: Verify and publish assets for the existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cd candidate
+          test "$(cat COMMIT)" = "$GITHUB_SHA"
+          sha256sum --check SHA256SUMS
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Tally $GITHUB_REF_NAME" --notes-file RELEASE-NOTES.md "${flags[@]}" \
+            *.exe *.dmg *.deb *.AppImage SHA256SUMS

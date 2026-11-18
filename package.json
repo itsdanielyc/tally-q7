@@ -3,7 +3,7 @@
   "productName": "tally",
   "private": true,
   "version": "0.1.0",
-  "description": "tally: an Electron app scaffolded by Keel",
+  "description": "A local expense ledger for one person",
   "author": "itsdanielyc <itsdanielyc@users.noreply.github.com>",
   "license": "MIT",
   "type": "module",
@@ -22,7 +22,8 @@
     "test:ui:update": "cross-env UPDATE_SNAPSHOTS=1 playwright test --update-snapshots=all",
     "test:e2e": "playwright test -c playwright.e2e.config.ts",
     "contact-sheet": "node scripts/contact-sheet.mjs",
-    "triage": "node scripts/triage.mjs"
+    "triage": "node scripts/triage.mjs",
+    "release:check": "node scripts/release-version.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

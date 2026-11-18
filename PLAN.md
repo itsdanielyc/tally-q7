@@ -29,5 +29,6 @@
 - Slice 5. Ruling: retain the latest undoable operation until any subsequent successful ledger edit and preserve it across restarts — undo remains immediate while reads and failed saves leave it available — cost if wrong is extending undo history and storage.
 - Slice 5. Ruling: preserve intentional repeated entries when reading a Tally export into an empty ledger — duplicate screening within ordinary bank files stays in place and a repeated Tally import still skips existing entries — cost if wrong is adding an explicit import mode later.
 - Slice 6. Ruling: use the unsigned artifacts permitted by ADR 001 and run release checks without publishing — the owner fixed the signing policy and requested a stop before the tag — cost if wrong is a later signing or publishing run.
+- Slice 6. Ruling: check the existing 0.1.0 version across the Electron package, lockfile and changelog — the fixed release already has that package version — cost if wrong is failing the candidate job until all three agree.
 
 <!-- keel:end -->
