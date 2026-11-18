@@ -40,6 +40,18 @@ export interface LedgerView {
   readonly transactions: readonly Transaction[];
   readonly rules: readonly PayeeRule[];
   readonly budgets: readonly MonthlyBudget[];
+  readonly undoAction: UndoAction | null;
+}
+
+export type UndoAction = "deleteTransaction" | "deleteCategory" | "mergeCategories" | "deleteRule" | "importCsv";
+
+export interface TransactionFilters {
+  readonly query?: string;
+  readonly categoryId?: string | null;
+  readonly from?: string;
+  readonly to?: string;
+  readonly minMinor?: number;
+  readonly maxMinor?: number;
 }
 
 export type CategoryCommand =
@@ -56,6 +68,7 @@ export type LedgerCommand =
   | { readonly type: "setCurrency"; readonly currency: string }
   | { readonly type: "importCsv"; readonly csv: CsvImportRequest }
   | { readonly type: "setBudget"; readonly categoryId: string; readonly month: string; readonly amountMinor: number | null }
+  | { readonly type: "undo" }
   | CategoryCommand;
 
 export interface LedgerOperations {
@@ -66,4 +79,5 @@ export interface LedgerOperations {
 export interface LedgerApi extends LedgerOperations {
   readonly kind: "native" | "mock";
   pickCsv(): Promise<CsvFile | null>;
+  exportCsv(filters: TransactionFilters): Promise<number | null>;
 }

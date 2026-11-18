@@ -33,7 +33,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1024, height: 700 } } },
   ],
   webServer: {
-    command: "npm run dev:web -- --strictPort --port 1420",
+    command: "node node_modules/vite/bin/vite.js --strictPort --port 1420",
     url: "http://localhost:1420",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

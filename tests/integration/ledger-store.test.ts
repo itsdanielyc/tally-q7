@@ -87,3 +87,17 @@ it("restores the month-specific budget from disk in a new service", async () => 
   await ledger.commit({ type: "setBudget", categoryId: food.id, month: "2026-11", amountMinor: 12_345 });
   expect((await createLedgerService(openLedgerStore(directory)).read()).budgets).toEqual([{ categoryId: food.id, month: "2026-11", amountMinor: 12_345 }]);
 });
+
+it("restores a merged or deleted category, including dependent rules and budgets, through restart", async () => {
+  const ledger = createLedgerService(openLedgerStore(directory));
+  const source = (await ledger.commit({ type: "saveTransaction", transaction: transactionDraft() })).categories[0];
+  const target = (await ledger.commit({ type: "saveCategory", name: "Essentials" })).categories[1];
+  await ledger.commit({ type: "addRule", contains: "Market", categoryId: source.id });
+  const before = await ledger.commit({ type: "setBudget", categoryId: source.id, month: "2026-11", amountMinor: 4500 });
+  await ledger.commit({ type: "mergeCategories", id: source.id, targetId: target.id });
+  const reopened = createLedgerService(openLedgerStore(directory));
+  expect((await reopened.read()).undoAction).toBe("mergeCategories");
+  expect(await reopened.commit({ type: "undo" })).toEqual(before);
+  await reopened.commit({ type: "deleteCategory", id: source.id });
+  expect(await createLedgerService(openLedgerStore(directory)).commit({ type: "undo" })).toEqual(before);
+});

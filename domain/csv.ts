@@ -1,7 +1,6 @@
 import { CSV_DELIMITERS, type CsvDelimiter } from "../contracts/csv";
 import { LedgerError } from "./validation";
 
-export const MAX_CSV_BYTES = 16 * 1024 * 1024;
 const HEADER_SAMPLE_RECORDS = 40;
 const CONSISTENCY_SAMPLE_RECORDS = 8;
 const MINIMUM_COLUMNS = 3;
@@ -26,7 +25,6 @@ export interface DetectedCsv {
 }
 
 export function decodeCsv(bytes: Uint8Array): string {
-  if (bytes.length > MAX_CSV_BYTES) throw new LedgerError("Choose a CSV file of 16 MB or less.");
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes);
   if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes);
   try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
@@ -103,7 +101,6 @@ export function suggestColumns(columns: readonly string[]) {
 
 // Time O(n) in the bounded header sample per supported separator, space O(n) for sampled records.
 export function detectCsv(text: string, selectedDelimiter?: CsvDelimiter): DetectedCsv {
-  if (text.length > MAX_CSV_BYTES) throw new LedgerError("Choose a CSV file of 16 MB or less.");
   const delimiters = selectedDelimiter ? [selectedDelimiter] : CSV_DELIMITERS;
   let best: { detected: DetectedCsv; score: number } | undefined;
   for (const delimiter of delimiters) {

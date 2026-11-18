@@ -1,9 +1,10 @@
-import type { Category, Transaction } from "../contracts/ledger";
+import type { Category, MonthlyBudget, PayeeRule, Transaction } from "../contracts/ledger";
 import { requireDate } from "./calendar";
 import { categoryKey } from "./categories";
 import { compareDatesNewestFirst, SCHEMA_VERSION, type LedgerDocument } from "./ledger";
 import { requireCurrency } from "./money";
 import { requireMonth } from "./summary";
+import type { UndoRecord } from "./undo";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
 
 function requireList(value: unknown, label: string): unknown[] {
@@ -21,6 +22,102 @@ function readTransaction(value: unknown, categoryId: string | null, legacy = fal
     categoryId,
     note: requireText(legacy ? transaction.note ?? "" : transaction.note, "Note", true),
   };
+}
+
+function readCategory(value: unknown): Category {
+  const category = requireRecord(value, "Category");
+  return { id: requireText(category.id, "a category ID"), name: requireText(category.name, "a category name") };
+}
+
+function readRule(value: unknown, categoryIds: ReadonlySet<string>): PayeeRule {
+  const rule = requireRecord(value, "Rule");
+  const categoryId = requireText(rule.categoryId, "a category ID");
+  if (!categoryIds.has(categoryId)) throw new LedgerError("Invalid rule reference.");
+  return { id: requireText(rule.id, "a rule ID"), categoryId, contains: requireText(rule.contains, "payee text") };
+}
+
+function readRules(value: unknown, categoryIds: ReadonlySet<string>): PayeeRule[] {
+  const ids = new Set<string>();
+  return requireList(value, "Rules").map((record) => {
+    const rule = readRule(record, categoryIds);
+    if (ids.has(rule.id)) throw new LedgerError("Duplicate rule ID.");
+    ids.add(rule.id);
+    return rule;
+  });
+}
+
+function readBudgets(value: unknown, categoryIds: ReadonlySet<string>): MonthlyBudget[] {
+  const keys = new Set<string>();
+  return requireList(value, "Budgets").map((record) => {
+    const budget = requireRecord(record, "Budget");
+    const categoryId = requireText(budget.categoryId, "a category ID");
+    const month = requireMonth(budget.month);
+    const amountMinor = requireMinorUnits(budget.amountMinor);
+    const key = JSON.stringify([categoryId, month]);
+    if (!categoryIds.has(categoryId) || amountMinor < 0 || keys.has(key)) throw new LedgerError("Invalid category budget.");
+    keys.add(key);
+    return { categoryId, month, amountMinor };
+  });
+}
+
+function readUndoIndex(value: unknown, length: number): number {
+  const index = requireMinorUnits(value);
+  if (index < 0 || index > length) throw new LedgerError("Invalid undo position.");
+  return index;
+}
+
+function readUndoIds(value: unknown, present: ReadonlySet<string>): string[] {
+  const visited = new Set<string>();
+  return requireList(value, "Undo IDs").map((record) => {
+    const id = requireText(record, "an undo ID");
+    if (!present.has(id) || visited.has(id)) throw new LedgerError("Invalid undo reference.");
+    visited.add(id);
+    return id;
+  });
+}
+
+function readUndo(value: unknown, document: Omit<LedgerDocument, "undo">, transactionIds: ReadonlySet<string>, categoryIds: ReadonlySet<string>): UndoRecord | null {
+  if (value === null || value === undefined) return null;
+  const undo = requireRecord(value, "Undo record");
+  switch (undo.action) {
+    case "deleteTransaction": {
+      const entry = requireRecord(undo.transaction, "Deleted transaction");
+      const categoryId = entry.categoryId === null ? null : requireText(entry.categoryId, "a category ID");
+      const transaction = readTransaction(entry, categoryId);
+      if (transactionIds.has(transaction.id) || (categoryId !== null && !categoryIds.has(categoryId))) throw new LedgerError("Invalid deleted transaction.");
+      return { action: undo.action, index: readUndoIndex(undo.index, document.transactions.length), transaction };
+    }
+    case "deleteRule": {
+      const rule = readRule(undo.rule, categoryIds);
+      if (document.rules.some(({ id }) => id === rule.id)) throw new LedgerError("Invalid deleted rule.");
+      return { action: undo.action, index: readUndoIndex(undo.index, document.rules.length), rule };
+    }
+    case "deleteCategory": case "mergeCategories": {
+      const category = readCategory(undo.category);
+      if (categoryIds.has(category.id) || document.categories.some(({ name }) => categoryKey(name) === categoryKey(category.name))) {
+        throw new LedgerError("Invalid removed category.");
+      }
+      const restoredIds = new Set(categoryIds).add(category.id);
+      return {
+        action: undo.action, category, index: readUndoIndex(undo.index, document.categories.length),
+        affectedTransactionIds: readUndoIds(undo.affectedTransactionIds, transactionIds),
+        rules: readRules(undo.rules, restoredIds), budgets: readBudgets(undo.budgets, restoredIds),
+      };
+    }
+    case "importCsv": {
+      const removedTransactions = readUndoIds(undo.transactionIds, transactionIds);
+      const removedCategories = readUndoIds(undo.categoryIds, categoryIds);
+      const currency = requireCurrency(undo.currency);
+      const removedTransactionIds = new Set(removedTransactions);
+      const removedCategoryIds = new Set(removedCategories);
+      if (document.transactions.some(({ id, categoryId }) => !removedTransactionIds.has(id) && categoryId !== null && removedCategoryIds.has(categoryId)) ||
+          document.rules.some(({ categoryId }) => removedCategoryIds.has(categoryId)) || document.budgets.some(({ categoryId }) => removedCategoryIds.has(categoryId))) {
+        throw new LedgerError("Undo would remove a category still in use.");
+      }
+      return { action: undo.action, transactionIds: removedTransactions, categoryIds: removedCategories, currency };
+    }
+    default: throw new LedgerError("Unsupported undo record.");
+  }
 }
 
 // Time O(n log n), space O(n); ordered files make the stable sort nearly linear.
@@ -45,8 +142,8 @@ export function decodeLedger(contents: string): LedgerDocument {
 
     if (!legacy) {
       for (const value of requireList(document.categories, "Categories")) {
-        const category = requireRecord(value, "Category");
-        addCategory(requireText(category.id, "a category ID"), requireText(category.name, "a category name"));
+        const category = readCategory(value);
+        addCategory(category.id, category.name);
       }
     }
 
@@ -67,27 +164,11 @@ export function decodeLedger(contents: string): LedgerDocument {
       return transaction;
     });
     transactions.sort(compareDatesNewestFirst);
-    const ruleIds = new Set<string>();
-    const rules = requireList(document.rules ?? [], "Rules").map((value) => {
-      const rule = requireRecord(value, "Rule");
-      const id = requireText(rule.id, "a rule ID");
-      const categoryId = requireText(rule.categoryId, "a category ID");
-      if (!categoryIds.has(categoryId) || ruleIds.has(id)) throw new LedgerError("Invalid rule reference.");
-      ruleIds.add(id);
-      return { id, categoryId, contains: requireText(rule.contains, "payee text") };
-    });
-    const budgetKeys = new Set<string>();
-    const budgets = requireList(document.budgets ?? [], "Budgets").map((value) => {
-      const budget = requireRecord(value, "Budget");
-      const categoryId = requireText(budget.categoryId, "a category ID");
-      const month = requireMonth(budget.month);
-      const amountMinor = requireMinorUnits(budget.amountMinor);
-      const key = JSON.stringify([categoryId, month]);
-      if (!categoryIds.has(categoryId) || amountMinor < 0 || budgetKeys.has(key)) throw new LedgerError("Invalid category budget.");
-      budgetKeys.add(key);
-      return { categoryId, month, amountMinor };
-    });
-    return { schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions, rules, budgets };
+    const loaded = {
+      schemaVersion: SCHEMA_VERSION, currency, categories: [...categoriesByName.values()], transactions,
+      rules: readRules(document.rules ?? [], categoryIds), budgets: readBudgets(document.budgets ?? [], categoryIds),
+    } as const;
+    return { ...loaded, undo: readUndo(document.undo, loaded, transactionIds, categoryIds) };
   } catch (error) {
     const reason = error instanceof LedgerError ? error.message : "Invalid JSON.";
     throw new LedgerError(`The ledger could not be opened. ${reason}`);

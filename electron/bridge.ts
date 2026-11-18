@@ -4,6 +4,7 @@ export const channels = {
   read: "ledger:read",
   commit: "ledger:commit",
   pickCsv: "ledger:pick-csv",
+  exportCsv: "ledger:export-csv",
   platformInfo: "tally:platform-info",
 } as const;
 

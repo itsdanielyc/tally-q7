@@ -1,10 +1,10 @@
 import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { LedgerCommand } from "../contracts/ledger";
+import type { LedgerCommand, TransactionFilters } from "../contracts/ledger";
 import { LedgerError } from "../domain/validation";
 import { channels, type PlatformInfo, type Reply } from "./bridge";
-import { pickCsvFile } from "./csv-files";
+import { pickCsvFile, saveCsvFile } from "./csv-files";
 import { nativeLedgerApi } from "./ledger-api";
 import { openLedgerStore } from "./ledger-store";
 
@@ -23,6 +23,11 @@ if (testProfile) {
 
 function platformInfo(): PlatformInfo {
   return { os: process.platform, arch: process.arch, electron: process.versions.electron, packaged: app.isPackaged };
+}
+
+function activeWindow(): BrowserWindow {
+  if (!primaryWindow) throw new LedgerError("The Tally window is closed.");
+  return primaryWindow;
 }
 
 async function respond<T>(event: IpcMainInvokeEvent, handler: () => T | Promise<T>): Promise<Reply<T>> {
@@ -70,13 +75,15 @@ if (!app.requestSingleInstanceLock()) {
     primaryWindow.focus();
   });
   void app.whenReady().then(() => {
-    const ledger = nativeLedgerApi(openLedgerStore(app.getPath("userData")), () => {
-      if (!primaryWindow) throw new LedgerError("The Tally window is closed.");
-      return pickCsvFile(primaryWindow, testProfile ? process.env.TALLY_TEST_IMPORT_FILE || undefined : undefined);
-    });
+    const ledger = nativeLedgerApi(
+      openLedgerStore(app.getPath("userData")),
+      () => pickCsvFile(activeWindow(), testProfile ? process.env.TALLY_TEST_IMPORT_FILE || undefined : undefined),
+      (name, text) => saveCsvFile(activeWindow(), name, text, testProfile ? process.env.TALLY_TEST_EXPORT_FILE || undefined : undefined),
+    );
     ipcMain.handle(channels.read, (event) => respond(event, ledger.read));
     ipcMain.handle(channels.commit, (event, command: LedgerCommand) => respond(event, () => ledger.commit(command)));
     ipcMain.handle(channels.pickCsv, (event) => respond(event, ledger.pickCsv));
+    ipcMain.handle(channels.exportCsv, (event, filters: TransactionFilters) => respond(event, () => ledger.exportCsv(filters)));
     ipcMain.handle(channels.platformInfo, (event) => respond(event, platformInfo));
     createWindow();
     app.on("activate", () => { if (!primaryWindow) createWindow(); });

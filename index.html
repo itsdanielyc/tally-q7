@@ -19,6 +19,7 @@
         </nav>
         <div class="app-tools">
           <span class="mock-badge" data-testid="backend-badge" hidden></span>
+          <button class="app-button" id="undo-action" type="button" hidden>Undo</button>
           <button class="app-button" id="open-settings" type="button" disabled>Settings</button>
         </div>
       </div>
@@ -30,9 +31,26 @@
         <h1>Transactions</h1>
         <div class="actions">
           <button id="import-csv" type="button" disabled>Import CSV</button>
+          <button id="export-csv" type="button" disabled>Export CSV</button>
           <button class="primary" id="add-transaction" type="button" disabled>Add transaction</button>
         </div>
       </div>
+
+      <form id="transaction-filters" class="filter-panel" role="search" aria-label="Filter transactions" data-geo="filters">
+        <div class="filter-top">
+          <label>Search payee or note <input name="query" type="text" /></label>
+          <label>Category filter <select name="category"></select></label>
+          <button type="reset">Clear filters</button>
+        </div>
+        <details>
+          <summary>More filters</summary>
+          <div class="filter-ranges">
+            <label>From date <input type="date" name="from" /></label><label>To date <input type="date" name="to" /></label>
+            <label>Minimum amount <input inputmode="decimal" name="minimum" /></label><label>Maximum amount <input inputmode="decimal" name="maximum" /></label>
+          </div>
+        </details>
+        <p class="form-error" role="alert" hidden></p>
+      </form>
 
       <section class="ledger-card" aria-labelledby="ledger-title" data-geo="ledger">
         <div class="panel-heading">
@@ -162,7 +180,7 @@
           <p id="import-count" role="status" aria-live="polite"></p>
           <p id="import-duplicates"></p>
           <div class="table-scroll" id="preview-table" hidden>
-            <table aria-label="Accepted rows"><thead><tr><th scope="col">Line</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Category</th><th scope="col" class="amount">Amount</th></tr></thead><tbody id="preview-rows"></tbody></table>
+            <table aria-label="Accepted rows"><thead><tr><th scope="col">Line</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col">Category</th><th scope="col" class="amount" id="preview-amount-heading">Amount</th></tr></thead><tbody id="preview-rows"></tbody></table>
           </div>
           <div id="import-rejected" hidden><h3>Rejected rows</h3><ul id="import-errors"></ul></div>
         </section>

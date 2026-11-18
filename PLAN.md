@@ -9,7 +9,7 @@
 | 2 | Import a bank CSV | CSV fixture tests prove detection, all mapping modes, dirty-row diagnosis, duplicate counts and 2,000 rows within five seconds. A failed write commits no rows. Browser preview and real Electron import through a preset file path pass on Tier 1. | L0–L6 | solo | Done |
 | 3 | Categories and rules | Category lifecycle and rule precedence pass domain and contract checks. Import, manual category assignment and applying rules to uncategorised entries pass browser journeys. Tier 1 stays green. | L0–L6 | solo | Done |
 | 4 | Monthly summary and budgets | Month boundaries, sign handling, uncategorised totals, and precise budgets pass domain checks. Changing month and persisting a category budget pass browser journeys. Tier 1 stays green. | L0–L6 | solo | Done |
-| 5 | Find, export, undo | Combined filters, lossless CSV round trip, and one-step undo of deletes, merges and imports pass domain and store checks. Browser filtering and real-shell file export, reimport and undo pass on Tier 1. | L0–L6 | solo | Open |
+| 5 | Find, export, undo | Combined filters, lossless CSV round trip, and one-step undo of deletes, merges and imports pass domain and store checks. Browser filtering and real-shell file export, reimport and undo pass on Tier 1. | L0–L6 | solo | Done |
 | 6 | Release readiness | Version 0.1.0, dated changelog, matching release assets and SHA-256 checksums, green candidate CI and installer tests on every Tier 1 runner, and signing status are recorded before tagging. | L0–L7 | solo | Open |
 
 ## Rulings
@@ -29,6 +29,8 @@
 - Slice 4. Ruling: on category merge, keep the destination's existing budget for each month and move the source's budget for other months — a destination budget already states the user's intent for that month — cost if wrong is editing overlapping budgets after the merge.
 - Slice 4. Ruling: combine the Windows/Linux captures with the separate macOS proof, copying each runner's own PNG — the old merge step could overwrite earlier captures with old PNGs from a different runner's checkout — cost if wrong is an immediately visible pixel failure in normal CI.
 - Slice 5. Ruling: retain the latest undoable operation until any subsequent successful ledger edit and preserve it across restarts — undo remains immediate while reads and failed saves leave it available — cost if wrong is extending undo history and storage.
+- Slice 5. Ruling: preserve intentional repeated entries when reading a Tally export into an empty ledger — duplicate screening within ordinary bank files stays in place and a repeated Tally import still skips existing entries — cost if wrong is adding an explicit import mode later.
+- Slice 5. Ruling: use `macos-15` for the final capture and candidate matrix — it ran the exact final feature source while `macos-26` was queued — cost if wrong is recapturing the macOS baseline when the image changes.
 - Slice 6. Ruling: use the unsigned artifacts permitted by ADR 001 and run release checks without publishing — the owner fixed the signing policy and requested a stop before the tag — cost if wrong is a later signing or publishing run.
 
 <!-- keel:end -->

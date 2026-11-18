@@ -1,4 +1,4 @@
-import type { LedgerCommand, LedgerView, Transaction } from "../contracts/ledger";
+import type { LedgerCommand, LedgerView, Transaction, UndoAction } from "../contracts/ledger";
 import { localDate } from "../domain/calendar";
 import { CURRENCIES, formatAmount, parseAmount } from "../domain/money";
 import { api } from "./api";
@@ -6,11 +6,18 @@ import { element, field, messageOf, setFormError } from "./dom";
 import { connectImport } from "./import-panel";
 import { connectCategories } from "./category-panel";
 import { connectSummary } from "./summary-panel";
+import { connectFilters } from "./filter-panel";
 
 const displayDate = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 const currencyNames = new Intl.DisplayNames(["en"], { type: "currency" });
 const addTransaction = element<HTMLButtonElement>("add-transaction");
 const openSettings = element<HTMLButtonElement>("open-settings");
+const exportCsv = element<HTMLButtonElement>("export-csv");
+const undo = element<HTMLButtonElement>("undo-action");
+const UNDO_LABELS: Record<UndoAction, string> = {
+  deleteTransaction: "Undo transaction deletion", deleteCategory: "Undo category deletion",
+  mergeCategories: "Undo category merge", deleteRule: "Undo rule removal", importCsv: "Undo import",
+};
 const transactionDialog = element<HTMLDialogElement>("transaction-dialog");
 const transactionForm = element<HTMLFormElement>("transaction-form");
 const deleteDialog = element<HTMLDialogElement>("delete-dialog");
@@ -23,6 +30,7 @@ const panels = document.querySelectorAll<HTMLElement>("[data-page-view]");
 let ledger: LedgerView | undefined;
 let editedId: string | undefined;
 let deletedId: string | undefined;
+let exporting = false;
 
 function currentLedger(): LedgerView {
   if (!ledger) throw new Error("The ledger is still loading.");
@@ -42,9 +50,22 @@ function actionButton(action: "edit" | "delete", transaction: Transaction): HTML
 
 function renderLedger(view: LedgerView): void {
   ledger = view;
+  filters.update(view);
+  renderRows(view);
+  undo.hidden = view.undoAction === null;
+  undo.title = view.undoAction ? UNDO_LABELS[view.undoAction] : "";
+  addTransaction.disabled = false;
+  openSettings.disabled = false;
+  element<HTMLButtonElement>("import-csv").disabled = false;
+  navigation.forEach((button) => { button.disabled = false; });
+  renderActivePage(view);
+}
+
+function renderRows(view: LedgerView): void {
+  const shown = filters.rows(view);
   const categories = new Map(view.categories.map(({ id, name }) => [id, name]));
   const rows = document.createDocumentFragment();
-  for (const transaction of view.transactions) {
+  for (const transaction of shown) {
     const row = document.createElement("tr");
     row.insertCell().textContent = displayDate.format(new Date(`${transaction.date}T00:00:00Z`));
 
@@ -70,14 +91,14 @@ function renderLedger(view: LedgerView): void {
     rows.append(row);
   }
   transactionsBody.replaceChildren(rows);
-  element("entry-count").textContent = `${view.transactions.length} ${view.transactions.length === 1 ? "transaction" : "transactions"}`;
+  const total = view.transactions.length;
+  const count = shown.length === total ? String(total) : `${shown.length} of ${total}`;
+  element("entry-count").textContent = `${count} ${total === 1 ? "transaction" : "transactions"}`;
   element("amount-heading").textContent = `Amount (${view.currency})`;
-  element("ledger-empty").hidden = view.transactions.length !== 0;
-  addTransaction.disabled = false;
-  openSettings.disabled = false;
-  element<HTMLButtonElement>("import-csv").disabled = false;
-  navigation.forEach((button) => { button.disabled = false; });
-  renderActivePage(view);
+  const empty = element("ledger-empty");
+  empty.hidden = shown.length !== 0;
+  empty.textContent = total ? "No transactions match these filters." : "No transactions yet.";
+  exportCsv.disabled = exporting || shown.length === 0;
 }
 
 function openTransaction(transaction?: Transaction): void {
@@ -169,6 +190,23 @@ bindMutation(settingsForm, settingsDialog, () => ({ type: "setCurrency", currenc
 connectImport(currentLedger, renderLedger, setStatus);
 const renderCategories = connectCategories(currentLedger, renderLedger, setStatus);
 const renderSummary = connectSummary(currentLedger, renderLedger, setStatus);
+const filters = connectFilters(() => ledger, renderRows);
+
+undo.addEventListener("click", async () => {
+  undo.disabled = true;
+  try { renderLedger(await api.commit({ type: "undo" })); setStatus("Change undone."); }
+  catch (error) { setStatus(messageOf(error), true); }
+  finally { undo.disabled = false; }
+});
+exportCsv.addEventListener("click", async () => {
+  exporting = true;
+  exportCsv.disabled = true;
+  try {
+    const count = await api.exportCsv(filters.snapshot());
+    if (count !== null) setStatus(`Exported ${count} ${count === 1 ? "transaction" : "transactions"}.`);
+  } catch (error) { setStatus(messageOf(error), true); }
+  finally { exporting = false; exportCsv.disabled = filters.rows(currentLedger()).length === 0; }
+});
 
 function renderActivePage(view: LedgerView): void {
   const active = document.querySelector<HTMLButtonElement>("[data-page][aria-current=page]")?.dataset.page;

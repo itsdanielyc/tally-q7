@@ -1,7 +1,17 @@
 - main:
   - heading "Transactions" [level=1]
   - button "Import CSV"
+  - button "Export CSV" [disabled]
   - button "Add transaction"
+  - search "Filter transactions":
+    - text: Search payee or note
+    - textbox "Search payee or note"
+    - text: Category filter
+    - combobox "Category filter":
+      - option "All categories" [selected]
+      - option "Uncategorised"
+    - button "Clear filters"
+    - group: More filters
   - region "Ledger":
     - heading "Ledger" [level=2]
     - paragraph: 0 transactions

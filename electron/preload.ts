@@ -14,6 +14,7 @@ const bridge: RendererBridge = {
   read: () => invoke<LedgerView>(channels.read),
   commit: (command) => invoke<LedgerView>(channels.commit, command),
   pickCsv: () => invoke<CsvFile | null>(channels.pickCsv),
+  exportCsv: (filters) => invoke<number | null>(channels.exportCsv, filters),
   platformInfo: () => invoke<PlatformInfo>(channels.platformInfo),
 };
 
