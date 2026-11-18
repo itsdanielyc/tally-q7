@@ -9,7 +9,7 @@ permissions:
 jobs:
   macos:
     name: Verify scaffold on macOS arm64
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 20
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
