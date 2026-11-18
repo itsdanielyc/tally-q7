@@ -9,6 +9,7 @@ import type { Page } from "@playwright/test";
 
 export type Box = { x: number; y: number; w: number; h: number };
 export type Geometry = Record<string, Box>;
+export const GEOMETRY_TOLERANCE = 8;
 
 export async function captureGeometry(page: Page): Promise<Geometry> {
   return page.evaluate(() => {
@@ -54,7 +55,7 @@ export function compareGeometry(expected: Geometry, actual: Geometry, tolerance:
  * reported, never silently accepted: the test fails with a message telling
  * the author to commit it. With UPDATE_SNAPSHOTS=1 the file is rewritten.
  */
-export function assertGeometry(file: string, actual: Geometry, tolerance = 8): void {
+export function assertGeometry(file: string, actual: Geometry, tolerance = GEOMETRY_TOLERANCE): void {
   const update = process.env.UPDATE_SNAPSHOTS === "1";
   if (!existsSync(file) || update) {
     mkdirSync(dirname(file), { recursive: true });
