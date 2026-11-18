@@ -25,6 +25,7 @@
 - Slice 2. Ruling: interpret two-digit years with a 1970–2069 window and report the resulting date in preview — bank exports sometimes omit the century — cost if wrong is selecting or exporting a four-digit-year column.
 - Slice 3. Ruling: the first matching payee rule in creation order wins, with case-insensitive substring matching — a predictable order makes overlapping rules understandable — cost if wrong is providing rule ordering later.
 - Slice 4. Ruling: use the signed amount to classify income and spending and compare budgets with category spending — the budget is a spending ceiling — cost if wrong is introducing explicit transfer or credit handling in a later version.
+- Slice 4. Ruling: on category merge, keep the destination's existing budget for each month and move the source's budget for other months — a destination budget already states the user's intent for that month — cost if wrong is editing overlapping budgets after the merge.
 - Slice 5. Ruling: retain the latest undoable operation until any subsequent successful ledger edit and preserve it across restarts — undo remains immediate while reads and failed saves leave it available — cost if wrong is extending undo history and storage.
 - Slice 6. Ruling: use the unsigned artifacts permitted by ADR 001 and run release checks without publishing — the owner fixed the signing policy and requested a stop before the tag — cost if wrong is a later signing or publishing run.
 

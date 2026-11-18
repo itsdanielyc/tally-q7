@@ -1,4 +1,4 @@
-import type { Category, CategoryCommand, PayeeRule } from "../contracts/ledger";
+import type { Category, CategoryCommand, MonthlyBudget, PayeeRule } from "../contracts/ledger";
 import type { LedgerDocument } from "./ledger";
 import { LedgerError, requireText } from "./validation";
 
@@ -48,7 +48,13 @@ function removeCategory(document: LedgerDocument, id: string, targetId?: string)
   const rules = targetId === undefined
     ? document.rules.filter((rule) => rule.categoryId !== id)
     : document.rules.map((rule) => rule.categoryId === id ? { ...rule, categoryId: targetId } : rule);
-  return { ...document, categories: document.categories.filter((category) => category.id !== id), transactions, rules };
+  const budgets: MonthlyBudget[] = [];
+  const targetMonths = new Set(document.budgets.filter((budget) => budget.categoryId === targetId).map(({ month }) => month));
+  for (const budget of document.budgets) {
+    if (budget.categoryId !== id) budgets.push(budget);
+    else if (targetId !== undefined && !targetMonths.has(budget.month)) budgets.push({ ...budget, categoryId: targetId });
+  }
+  return { ...document, categories: document.categories.filter((category) => category.id !== id), transactions, rules, budgets };
 }
 
 // Time O(n * r * s) for n entries, r rules and the substring search cost s; space O(n + r).

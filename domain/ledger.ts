@@ -3,6 +3,7 @@ import { requireDate } from "./calendar";
 import { categoryKey, changeCategories } from "./categories";
 import { previewImport } from "./import-ledger";
 import { DEFAULT_CURRENCY, requireCurrency } from "./money";
+import { setBudget } from "./summary";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
 
 export const SCHEMA_VERSION = 1;
@@ -17,7 +18,7 @@ export interface LedgerStore {
 }
 
 export function emptyLedger(): LedgerDocument {
-  return { schemaVersion: SCHEMA_VERSION, currency: DEFAULT_CURRENCY, categories: [], transactions: [], rules: [] };
+  return { schemaVersion: SCHEMA_VERSION, currency: DEFAULT_CURRENCY, categories: [], transactions: [], rules: [], budgets: [] };
 }
 
 export function memoryLedgerStore(): LedgerStore {
@@ -85,17 +86,18 @@ function applyChange(document: LedgerDocument, command: LedgerCommand): LedgerDo
     case "setCurrency": {
       const currency = requireCurrency(command.currency);
       if (currency === document.currency) return document;
-      if (document.transactions.length > 0) throw new LedgerError("Currency can only change when the ledger is empty.");
+      if (document.transactions.length > 0 || document.budgets.length > 0) throw new LedgerError("Currency can only change when the ledger is empty.");
       return { ...document, currency };
     }
+    case "setBudget": return setBudget(document, command);
     case "saveCategory": case "deleteCategory": case "mergeCategories":
     case "addRule": case "deleteRule": case "applyRules": return changeCategories(document, command);
     default: throw new LedgerError("Unknown ledger command.");
   }
 }
 
-function viewOf({ currency, categories, transactions, rules }: LedgerDocument): LedgerView {
-  return { currency, categories, transactions, rules };
+function viewOf({ currency, categories, transactions, rules, budgets }: LedgerDocument): LedgerView {
+  return { currency, categories, transactions, rules, budgets };
 }
 
 /** Serialises loads and saves, publishing a new view only after its write succeeds. */

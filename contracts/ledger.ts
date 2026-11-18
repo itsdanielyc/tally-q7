@@ -11,6 +11,12 @@ export interface PayeeRule {
   readonly categoryId: string;
 }
 
+export interface MonthlyBudget {
+  readonly categoryId: string;
+  readonly month: string;
+  readonly amountMinor: number;
+}
+
 export interface Transaction {
   readonly id: string;
   readonly date: string;
@@ -33,6 +39,7 @@ export interface LedgerView {
   readonly categories: readonly Category[];
   readonly transactions: readonly Transaction[];
   readonly rules: readonly PayeeRule[];
+  readonly budgets: readonly MonthlyBudget[];
 }
 
 export type CategoryCommand =
@@ -48,6 +55,7 @@ export type LedgerCommand =
   | { readonly type: "deleteTransaction"; readonly id: string }
   | { readonly type: "setCurrency"; readonly currency: string }
   | { readonly type: "importCsv"; readonly csv: CsvImportRequest }
+  | { readonly type: "setBudget"; readonly categoryId: string; readonly month: string; readonly amountMinor: number | null }
   | CategoryCommand;
 
 export interface LedgerOperations {
