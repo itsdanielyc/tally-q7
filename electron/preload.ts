@@ -1,11 +1,20 @@
-// Runs sandboxed with contextIsolation on. It exposes exactly the typed bridge
-// and nothing else: no ipcRenderer, no Node.
 import { contextBridge, ipcRenderer } from "electron";
-import { channels, type ElectronBridge } from "./bridge";
+import type { LedgerView } from "../contracts/ledger";
+import type { CsvFile } from "../contracts/csv";
+import { channels, type PlatformInfo, type RendererBridge, type Reply } from "./bridge";
 
-const bridge: ElectronBridge = {
-  greet: (name) => ipcRenderer.invoke(channels.greet, name),
-  platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
+async function invoke<T>(channel: typeof channels[keyof typeof channels], ...args: unknown[]): Promise<T> {
+  const result: Reply<T> = await ipcRenderer.invoke(channel, ...args);
+  if (!result.ok) throw new Error(result.message);
+  return result.value;
+}
+
+const bridge: RendererBridge = {
+  kind: "native",
+  read: () => invoke<LedgerView>(channels.read),
+  commit: (command) => invoke<LedgerView>(channels.commit, command),
+  pickCsv: () => invoke<CsvFile | null>(channels.pickCsv),
+  platformInfo: () => invoke<PlatformInfo>(channels.platformInfo),
 };
 
 contextBridge.exposeInMainWorld("electronBridge", bridge);

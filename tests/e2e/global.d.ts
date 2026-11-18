@@ -1,7 +1,7 @@
-import type { ElectronBridge } from "../../electron/bridge";
+import type { RendererBridge } from "../../electron/bridge";
 
 declare global {
   interface Window {
-    electronBridge?: ElectronBridge;
+    electronBridge?: RendererBridge;
   }
 }

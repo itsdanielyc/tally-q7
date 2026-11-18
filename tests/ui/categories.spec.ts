@@ -1,0 +1,30 @@
+import { expect, test } from "@playwright/test";
+
+test("creates a category and uses its rule for an uncategorised entry", async ({ page }, testInfo) => {
+  await page.goto("/");
+  const nav = page.getByRole("navigation", { name: "Workspace" });
+  await nav.getByRole("button", { name: "Categories" }).click();
+  await page.getByRole("button", { name: "Add category" }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Category name").fill("Groceries");
+  await dialog.getByRole("button", { name: "Save category" }).click();
+  await page.getByRole("button", { name: "Add rule" }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Payee contains").fill("Market");
+  await dialog.getByLabel("Use category").selectOption({ label: "Groceries" });
+  await dialog.getByRole("button", { name: "Save rule" }).click();
+  await nav.getByRole("button", { name: "Transactions" }).click();
+  await page.getByRole("button", { name: "Add transaction" }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Payee").fill("Corner Market");
+  await dialog.getByLabel(/^Amount/).fill("-14.25");
+  await dialog.getByRole("button", { name: "Save transaction" }).click();
+  const row = page.getByRole("row").filter({ hasText: "Corner Market" });
+  await expect(row).toContainText("—");
+  await nav.getByRole("button", { name: "Categories" }).click();
+  await page.getByRole("button", { name: "Apply rules" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Categorised 1 transaction." })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("categories.png") });
+  await nav.getByRole("button", { name: "Transactions" }).click();
+  await expect(row).toContainText("Groceries");
+});

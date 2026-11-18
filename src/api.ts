@@ -1,45 +1,39 @@
-// The seam between the UI and the backend. Inside Electron the calls go
-// through the preload bridge (window.electronBridge) over IPC to the main
-// process; in a plain browser (Vite dev server, Playwright, a web build) a
-// labelled mock answers instead. The mock is held to the same contract as the
-// main process by tests/unit/contract.test.ts and by the real-shell suite, so
-// a UI test that passes against the mock means something.
-import type { ElectronBridge, PlatformInfo } from "../electron/bridge";
-import { greeting } from "../contracts/greet";
-
-export type { PlatformInfo };
-
-export interface Backend {
-  readonly kind: "native" | "mock";
-  greet(name: string): Promise<string>;
-  platformInfo(): Promise<PlatformInfo>;
-}
+import type { LedgerApi } from "../contracts/ledger";
+import type { CsvFile } from "../contracts/csv";
+import { decodeCsv, MAX_CSV_BYTES } from "../domain/csv";
+import { createLedgerService, memoryLedgerStore } from "../domain/ledger";
+import type { RendererBridge } from "../electron/bridge";
 
 declare global {
   interface Window {
-    electronBridge?: ElectronBridge;
+    electronBridge?: RendererBridge;
   }
 }
 
-const bridge = typeof window !== "undefined" ? window.electronBridge : undefined;
+function pickBrowserCsv(): Promise<CsvFile | null> {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,.tsv,.txt";
+    input.hidden = true;
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) { resolve(null); return; }
+      try {
+        if (file.size > MAX_CSV_BYTES) throw new Error("Choose a CSV file of 16 MB or less.");
+        resolve({ name: file.name, text: decodeCsv(new Uint8Array(await file.arrayBuffer())) });
+      } catch (error) { reject(error); }
+    }, { once: true });
+    input.addEventListener("cancel", () => { input.remove(); resolve(null); }, { once: true });
+    document.body.append(input);
+    input.click();
+  });
+}
 
-export const isNative = bridge !== undefined;
+/** A fresh, visibly labelled browser adapter with no access to a real ledger. */
+export function mockLedgerApi(): LedgerApi {
+  return { kind: "mock", ...createLedgerService(memoryLedgerStore()), pickCsv: pickBrowserCsv };
+}
 
-export const mock: Backend = {
-  kind: "mock",
-  greet: async (name) => greeting(name),
-  platformInfo: async () => ({
-    os: "mock",
-    arch: "mock",
-    electron: "mock",
-    packaged: false,
-  }),
-};
-
-export const backend: Backend = bridge
-  ? {
-      kind: "native",
-      greet: (name) => bridge.greet(name),
-      platformInfo: () => bridge.platformInfo(),
-    }
-  : mock;
+export const api: LedgerApi = (typeof window === "undefined" ? undefined : window.electronBridge) ?? mockLedgerApi();

@@ -13,13 +13,13 @@ permissions:
 
 jobs:
   capture:
-    name: capture (${{ matrix.os }})
+    name: capture and verify (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15]
+        os: [ubuntu-latest, windows-latest, macos-26]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -38,7 +38,7 @@ jobs:
         run: |
           bound=""; command -v timeout >/dev/null && bound="timeout 420"   # macOS has no timeout(1)
           for attempt in 1 2; do
-            $bound npx playwright install --with-deps chromium && exit 0
+            $bound npx playwright install --with-deps chromium --only-shell && exit 0
             echo "attempt $attempt failed or stalled; retrying"
           done
           exit 1
@@ -46,11 +46,48 @@ jobs:
         env:
           CI: "1"
         run: npm run test:ui:update
+      - name: Compare captured baselines and exercise browser journeys
+        env:
+          CI: "1"
+        run: npm run test:ui
+      - name: Run domain, contract and integration suites
+        shell: bash
+        run: |
+          npm run test:unit
+          npm run test:contracts
+          npm run test:integration
+      - name: Fetch Electron
+        timeout-minutes: 5
+        run: node node_modules/electron/install.js
+      - name: Type-check and build the app
+        run: npm run build
+      - name: Real-shell journeys
+        shell: bash
+        env:
+          CI: "1"
+          NO_AT_BRIDGE: "1"
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" npm run test:e2e
+          else
+            npm run test:e2e
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: snapshots-${{ matrix.os }}
           path: tests/ui/__snapshots__
           retention-days: 3
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: visual-verification-${{ matrix.os }}
+          path: |
+            artifacts/e2e
+            playwright-report
+            test-results/ui
+            test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 14
 
   propose:
     name: open pull request
@@ -70,19 +107,20 @@ jobs:
       - name: Commit the baselines
         env:
           GH_TOKEN: ${{ github.token }}
+          DISPATCH_REF: ${{ github.ref_name }}
         run: |
           git add tests/ui/__snapshots__
           if git diff --cached --quiet; then echo "No snapshot changes."; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Update visual snapshots from run ${{ github.run_id }}"
-          if [ "${{ github.ref_name }}" != "main" ]; then
+          if [ "$DISPATCH_REF" != "main" ]; then
             # Dispatched on a working branch: land the baselines on that branch,
             # so the pull request that is already open picks them up.
-            git push origin "HEAD:${{ github.ref_name }}"
+            git push origin "HEAD:$DISPATCH_REF"
           else
             branch="snapshots/update-${{ github.run_id }}"
             git checkout -b "$branch"
             git push origin "$branch"
-            gh pr create --base main --head "$branch"               --title "Update visual snapshots (run ${{ github.run_id }})"               --body "Baselines captured on ubuntu-latest, windows-latest and macos-15 by the snapshots workflow. Review the images before merging."
+            gh pr create --base main --head "$branch" --title "Update visual snapshots (run ${{ github.run_id }})" --body "Baselines captured on ubuntu-latest, windows-latest and macos-26. Review the images before merging."
           fi

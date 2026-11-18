@@ -1,0 +1,1 @@
+export const BANK_CSV = '\uFEFFReport for account\r\nDate;Description;Debit;Credit\r\n18/11/2026;"Market; downtown";"12,34";\r\nnot a date;Bad row;1,00;\r\n19/11/2026;"Payroll\r\nweekly";;"1.234,56"\r\n18/11/2026;"Market; downtown";"12,34";\r\n';
