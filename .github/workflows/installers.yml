@@ -1,12 +1,12 @@
-# L7: release bundles on the three OS families, installed and launched the
-# way a user would. Costs a packaging run per OS, so it runs on main and on
-# demand, not on every pull request. Unsigned on every OS; no notarization.
+# Verify the candidate on all Tier 1 platforms, exercise the release bundles,
+# and upload the four tested files with checksums.
 name: installers
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: installers-${{ github.ref }}
@@ -23,11 +23,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15]
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: windows-latest
+            platform: win32-x64
+          - os: macos-15
+            platform: darwin-arm64
     env:
       # No certificate lookup in the keychain, so macOS builds stay unsigned
       # (ad hoc) and electron-builder never tries to notarize.
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      EXPECTED_PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -44,8 +51,43 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0t64 libgtk-3-0t64 libgbm1 libasound2t64 libfuse2t64
       - run: npm ci
+      - name: Check version and runner architecture
+        shell: bash
+        run: |
+          npm run release:check
+          test "$(node -p 'process.platform + "-" + process.arch')" = "$EXPECTED_PLATFORM"
+      - name: Domain, contract and file-store suites
+        shell: bash
+        run: |
+          npm run test:unit
+          npm run test:contracts
+          npm run test:integration
+      - name: Fetch Chromium and runtime dependencies
+        timeout-minutes: 8
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
+        run: npx playwright install --with-deps chromium --only-shell
+      - name: Browser and visual checks
+        env:
+          CI: "1"
+        run: npm run test:ui
+      - name: Fetch Electron
+        timeout-minutes: 5
+        run: node node_modules/electron/install.js
       - name: Build and package (nsis | dmg | deb + AppImage)
         run: npm run package
+      - name: Real Electron checks
+        shell: bash
+        env:
+          CI: "1"
+          NO_AT_BRIDGE: "1"
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a --server-args="-screen 0 1280x1024x24" npm run test:e2e
+          else
+            npm run test:e2e
+          fi
       - name: Install, launch, uninstall (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -59,7 +101,6 @@ jobs:
           NO_AT_BRIDGE: "1"
         run: xvfb-run -a --server-args="-screen 0 1280x1024x24" bash scripts/installer-test.sh
       - name: Upload bundles
-        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: bundles-${{ matrix.os }}
@@ -68,5 +109,52 @@ jobs:
             release/*.dmg
             release/*.deb
             release/*.AppImage
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
+      - name: Upload verification screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-verification-${{ matrix.os }}
+          path: |
+            artifacts/e2e
+            playwright-report
+            test-results/ui
+            test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 14
+
+  checksums:
+    name: Assemble verified bundle set and checksums
+    needs: [installers]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bundles-*
+          path: candidate
+          merge-multiple: true
+      - name: Assert the four expected files and verify SHA-256
+        shell: bash
+        run: |
+          shopt -s nullglob
+          cd candidate
+          for extension in exe dmg deb AppImage; do
+            files=(*."$extension")
+            if [ "${#files[@]}" -ne 1 ]; then
+              echo "Expected one .$extension bundle; found ${#files[@]}." >&2
+              exit 1
+            fi
+          done
+          sha256sum -- *.AppImage *.deb *.dmg *.exe > SHA256SUMS
+          sha256sum --check SHA256SUMS
+          git rev-parse HEAD > COMMIT
+          node ../scripts/release-version.mjs --notes > RELEASE-NOTES.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-candidate
+          path: candidate
+          if-no-files-found: error
+          retention-days: 30
