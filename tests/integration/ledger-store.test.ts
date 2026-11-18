@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { createLedgerService } from "../../domain/ledger";
 import { openLedgerStore } from "../../electron/ledger-store";
 import { transactionDraft } from "../fixtures/ledger";
+import type { CsvImportRequest } from "../../contracts/csv";
 
 let directory: string;
 const output = resolve("artifacts", "integration");
@@ -54,4 +55,27 @@ it("protects unreadable and future-version files from replacement", async () => 
     await expect(ledger.commit({ type: "saveTransaction", transaction: transactionDraft() })).rejects.toThrow(/ledger/i);
     expect(await readFile(file, "utf8")).toBe(contents);
   }
+});
+
+it("writes a 2,000-row import within five seconds as one transaction and nothing on repeat", async () => {
+  const count = 2_000;
+  const csv: CsvImportRequest = {
+    text: "Date,Payee,Amount\n" + Array.from({ length: count }, (_, index) => `2026-11-18,Merchant ${index},-1.25`).join("\n"),
+    delimiter: ",", headerLine: 1, dateOrder: "YMD", mapping: { date: 0, payee: 1, amount: { kind: "signed", column: 2 } },
+  };
+  let replacements = 0;
+  const { rename } = await import("node:fs/promises");
+  const store = openLedgerStore(directory, async (staged, target) => { replacements++; await rename(staged, target); });
+  const ledger = createLedgerService(store);
+  const start = performance.now();
+  const result = await ledger.commit({ type: "importCsv", csv });
+  expect(performance.now() - start).toBeLessThan(5_000);
+  expect(result.transactions).toHaveLength(count);
+  expect((await ledger.commit({ type: "importCsv", csv })).transactions).toHaveLength(count);
+  expect(replacements).toBe(1);
+  const before = await readFile(join(directory, "ledger.json"), "utf8");
+  const failure = createLedgerService(openLedgerStore(directory, async () => { throw new Error("disk unavailable"); }));
+  await expect(failure.commit({ type: "importCsv", csv: { ...csv, text: csv.text.replaceAll("Merchant", "Other") } })).rejects.toThrow("disk unavailable");
+  expect((await failure.read()).transactions).toHaveLength(count);
+  expect(await readFile(join(directory, "ledger.json"), "utf8")).toBe(before);
 });

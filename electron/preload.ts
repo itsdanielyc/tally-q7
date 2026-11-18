@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { LedgerView } from "../contracts/ledger";
+import type { CsvFile } from "../contracts/csv";
 import { channels, type PlatformInfo, type RendererBridge, type Reply } from "./bridge";
 
 async function invoke<T>(channel: typeof channels[keyof typeof channels], ...args: unknown[]): Promise<T> {
@@ -12,6 +13,7 @@ const bridge: RendererBridge = {
   kind: "native",
   read: () => invoke<LedgerView>(channels.read),
   commit: (command) => invoke<LedgerView>(channels.commit, command),
+  pickCsv: () => invoke<CsvFile | null>(channels.pickCsv),
   platformInfo: () => invoke<PlatformInfo>(channels.platformInfo),
 };
 

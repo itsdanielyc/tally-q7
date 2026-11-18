@@ -23,6 +23,7 @@
       <div class="page-heading" data-geo="heading">
         <h1>Transactions</h1>
         <div class="actions">
+          <button id="import-csv" type="button" disabled>Import CSV</button>
           <button class="primary" id="add-transaction" type="button" disabled>Add transaction</button>
         </div>
       </div>
@@ -88,6 +89,42 @@
         <div class="actions dialog-actions">
           <button type="button" data-close>Close</button>
           <button type="submit" class="primary">Save settings</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="import-dialog" class="wide-dialog" aria-labelledby="import-title">
+      <form id="import-form">
+        <h2 id="import-title">Import CSV</h2>
+        <p id="import-filename" class="field-hint"></p>
+        <div class="field-trio">
+          <label>Separator <select name="delimiter"><option value=",">Comma</option><option value=";">Semicolon</option><option value="tab">Tab</option><option value="|">Pipe</option></select></label>
+          <label>Header line <input name="header" type="number" min="1" required /></label>
+          <label>Date order <select name="dateOrder"><option value="MDY">Month, day, year</option><option value="DMY">Day, month, year</option><option value="YMD">Year, month, day</option></select></label>
+        </div>
+        <div class="field-trio">
+          <label>Date column <select name="date"></select></label>
+          <label>Payee column <select name="payee"></select></label>
+          <label>Amount format <select name="amountFormat"><option value="signed">Signed amount</option><option value="split">Debit and credit</option></select></label>
+        </div>
+        <label id="signed-mapping">Amount column <select name="amount"></select></label>
+        <div class="field-pair" id="split-mapping" hidden>
+          <label>Debit column <select name="debit"></select></label>
+          <label>Credit column <select name="credit"></select></label>
+        </div>
+        <section class="import-preview" aria-labelledby="preview-title">
+          <h3 id="preview-title">Preview</h3>
+          <p id="import-count" role="status" aria-live="polite"></p>
+          <p id="import-duplicates"></p>
+          <div class="table-scroll" id="preview-table" hidden>
+            <table aria-label="Accepted rows"><thead><tr><th scope="col">Line</th><th scope="col">Date</th><th scope="col">Payee</th><th scope="col" class="amount">Amount</th></tr></thead><tbody id="preview-rows"></tbody></table>
+          </div>
+          <div id="import-rejected" hidden><h3>Rejected rows</h3><ul id="import-errors"></ul></div>
+        </section>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="actions dialog-actions">
+          <button type="button" data-close>Cancel</button>
+          <button type="submit" id="confirm-import" class="primary" disabled>Confirm import</button>
         </div>
       </form>
     </dialog>

@@ -1,3 +1,5 @@
+import type { CsvFile, CsvImportRequest } from "./csv";
+
 export interface Category {
   readonly id: string;
   readonly name: string;
@@ -29,7 +31,8 @@ export interface LedgerView {
 export type LedgerCommand =
   | { readonly type: "saveTransaction"; readonly id?: string; readonly transaction: TransactionDraft }
   | { readonly type: "deleteTransaction"; readonly id: string }
-  | { readonly type: "setCurrency"; readonly currency: string };
+  | { readonly type: "setCurrency"; readonly currency: string }
+  | { readonly type: "importCsv"; readonly csv: CsvImportRequest };
 
 export interface LedgerOperations {
   read(): Promise<LedgerView>;
@@ -38,4 +41,5 @@ export interface LedgerOperations {
 
 export interface LedgerApi extends LedgerOperations {
   readonly kind: "native" | "mock";
+  pickCsv(): Promise<CsvFile | null>;
 }

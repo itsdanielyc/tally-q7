@@ -3,6 +3,7 @@ import { localDate } from "../domain/calendar";
 import { CURRENCIES, formatAmount, parseAmount } from "../domain/money";
 import { api } from "./api";
 import { element, field, messageOf, setFormError } from "./dom";
+import { connectImport } from "./import-panel";
 
 const displayDate = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
 const currencyNames = new Intl.DisplayNames(["en"], { type: "currency" });
@@ -70,6 +71,7 @@ function renderLedger(view: LedgerView): void {
   element("ledger-empty").hidden = view.transactions.length !== 0;
   addTransaction.disabled = false;
   openSettings.disabled = false;
+  element<HTMLButtonElement>("import-csv").disabled = false;
 }
 
 function openTransaction(transaction?: Transaction): void {
@@ -158,6 +160,7 @@ bindMutation(transactionForm, transactionDialog, () => ({
 }), "Transaction saved.");
 bindMutation(deleteForm, deleteDialog, () => ({ type: "deleteTransaction", id: deletedId ?? "" }), "Transaction deleted.");
 bindMutation(settingsForm, settingsDialog, () => ({ type: "setCurrency", currency: field(settingsForm, "currency").value }), "Settings saved.");
+connectImport(currentLedger, renderLedger, setStatus);
 
 void api.read().then(renderLedger).catch((error: unknown) => {
   element("entry-count").textContent = "Ledger unavailable";

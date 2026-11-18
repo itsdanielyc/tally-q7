@@ -3,6 +3,7 @@ import type { LedgerApi } from "../contracts/ledger";
 export const channels = {
   read: "ledger:read",
   commit: "ledger:commit",
+  pickCsv: "ledger:pick-csv",
   platformInfo: "tally:platform-info",
 } as const;
 

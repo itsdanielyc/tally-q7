@@ -127,6 +127,12 @@ input, select, textarea {
 }
 textarea { resize: vertical; }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.wide-dialog { width: min(760px, calc(100% - 36px)); }
+.import-preview { display: grid; gap: 7px; }
+.import-preview h3 { margin: 0; font-size: 15px; }
+.import-preview .table-scroll { max-height: 180px; }
+#import-errors { margin: 6px 0 0; max-height: 95px; overflow: auto; padding-left: 22px; }
 .field-hint, .optional { font-size: 12px; font-weight: normal; }
 .dialog-actions { justify-content: flex-end; margin-top: 4px; }
 
@@ -134,4 +140,7 @@ textarea { resize: vertical; }
   .app-bar-inner, .workspace { padding-inline: 20px; }
   th, td { padding-inline: 10px; }
   .actions { flex-wrap: wrap; }
+}
+@media (max-width: 540px) {
+  .field-trio { grid-template-columns: 1fr; }
 }

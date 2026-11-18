@@ -1,5 +1,6 @@
 - main:
   - heading "Transactions" [level=1]
+  - button "Import CSV"
   - button "Add transaction"
   - region "Ledger":
     - heading "Ledger" [level=2]

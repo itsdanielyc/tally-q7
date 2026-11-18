@@ -1,5 +1,6 @@
 import type { Category, LedgerCommand, LedgerOperations, LedgerView, Transaction } from "../contracts/ledger";
 import { requireDate } from "./calendar";
+import { previewImport } from "./import-ledger";
 import { DEFAULT_CURRENCY, requireCurrency } from "./money";
 import { LedgerError, requireMinorUnits, requireRecord, requireText } from "./validation";
 
@@ -75,6 +76,15 @@ function applyChange(document: LedgerDocument, command: LedgerCommand): LedgerDo
   switch (command.type) {
     case "saveTransaction": return saveTransaction(document, command.id, command.transaction);
     case "deleteTransaction": return deleteTransaction(document, command.id);
+    case "importCsv": {
+      const preview = previewImport(document, command.csv);
+      if (preview.rows.length === 0) return document;
+      const imported: Transaction[] = preview.rows.map(({ transaction }) => ({
+        id: crypto.randomUUID(), date: transaction.date, payee: transaction.payee, amountMinor: transaction.amountMinor, categoryId: null, note: "",
+      }));
+      const transactions = imported.concat(document.transactions).sort(compareDatesNewestFirst);
+      return { ...document, transactions };
+    }
     case "setCurrency": {
       const currency = requireCurrency(command.currency);
       if (currency === document.currency) return document;

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { LedgerCommand } from "../contracts/ledger";
 import { LedgerError } from "../domain/validation";
 import { channels, type PlatformInfo, type Reply } from "./bridge";
+import { pickCsvFile } from "./csv-files";
 import { nativeLedgerApi } from "./ledger-api";
 import { openLedgerStore } from "./ledger-store";
 
@@ -69,9 +70,13 @@ if (!app.requestSingleInstanceLock()) {
     primaryWindow.focus();
   });
   void app.whenReady().then(() => {
-    const ledger = nativeLedgerApi(openLedgerStore(app.getPath("userData")));
+    const ledger = nativeLedgerApi(openLedgerStore(app.getPath("userData")), () => {
+      if (!primaryWindow) throw new LedgerError("The Tally window is closed.");
+      return pickCsvFile(primaryWindow, testProfile ? process.env.TALLY_TEST_IMPORT_FILE || undefined : undefined);
+    });
     ipcMain.handle(channels.read, (event) => respond(event, ledger.read));
     ipcMain.handle(channels.commit, (event, command: LedgerCommand) => respond(event, () => ledger.commit(command)));
+    ipcMain.handle(channels.pickCsv, (event) => respond(event, ledger.pickCsv));
     ipcMain.handle(channels.platformInfo, (event) => respond(event, platformInfo));
     createWindow();
     app.on("activate", () => { if (!primaryWindow) createWindow(); });
