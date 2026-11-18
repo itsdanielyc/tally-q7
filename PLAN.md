@@ -30,5 +30,6 @@
 - Slice 5. Ruling: preserve intentional repeated entries when reading a Tally export into an empty ledger — duplicate screening within ordinary bank files stays in place and a repeated Tally import still skips existing entries — cost if wrong is adding an explicit import mode later.
 - Slice 6. Ruling: use the unsigned artifacts permitted by ADR 001 and run release checks without publishing — the owner fixed the signing policy and requested a stop before the tag — cost if wrong is a later signing or publishing run.
 - Slice 6. Ruling: check the existing 0.1.0 version across the Electron package, lockfile and changelog — the fixed release already has that package version — cost if wrong is failing the candidate job until all three agree.
+- Slice 6. Ruling: pin the tag target to the exact installer-tested commit on `main` and append the evidence in a documentation commit — the tag gate must match the build commit's SHA — cost if wrong is needing a new installer run for any later tag target.
 
 <!-- keel:end -->
