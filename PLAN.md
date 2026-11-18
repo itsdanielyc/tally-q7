@@ -2,15 +2,15 @@
 
 <!-- keel:start -->
 
-| # | Slice | Done when | Levels | Owner |
-|---|---|---|---|---|
-| 0 | Scaffold | The `electron-web` template is green on every Tier 1 runner, including browser visuals, Electron and installers, with hosted runs recorded in the ledger. | L0–L2, L4–L7 | solo |
-| 1 | Record transactions | Validation, newest-first ordering and currency checks pass. Mock and native contracts agree. File migration and interrupted saves preserve data. Browser editing and deletion pass. Real Electron saves an entry and reopens the unchanged values after restart. Hosted evidence covers Tier 1. | L0–L6 | solo |
-| 2 | Import a bank CSV | CSV fixture tests prove detection, all mapping modes, dirty-row diagnosis, duplicate counts and 2,000 rows within five seconds. A failed write commits no rows. Browser preview and real Electron import through a preset file path pass on Tier 1. | L0–L6 | solo |
-| 3 | Categories and rules | Category lifecycle and rule precedence pass domain and contract checks. Import, manual category assignment and applying rules to uncategorised entries pass browser journeys. Tier 1 stays green. | L0–L6 | solo |
-| 4 | Monthly summary and budgets | Month boundaries, sign handling, uncategorised totals, and precise budgets pass domain checks. Changing month and persisting a category budget pass browser journeys. Tier 1 stays green. | L0–L6 | solo |
-| 5 | Find, export, undo | Combined filters, lossless CSV round trip, and one-step undo of deletes, merges and imports pass domain and store checks. Browser filtering and real-shell file export, reimport and undo pass on Tier 1. | L0–L6 | solo |
-| 6 | Release readiness | Version 0.1.0, dated changelog, matching release assets and SHA-256 checksums, green candidate CI and installer tests on every Tier 1 runner, and signing status are recorded before tagging. | L0–L7 | solo |
+| # | Slice | Done when | Levels | Owner | Status |
+|---|---|---|---|---|---|
+| 0 | Scaffold | The `electron-web` template is green on every Tier 1 runner, including browser visuals, Electron and installers, with hosted runs recorded in the ledger. | L0–L2, L4–L7 | solo | Done |
+| 1 | Record transactions | Validation, newest-first ordering and currency checks pass. Mock and native contracts agree. File migration and interrupted saves preserve data. Browser editing and deletion pass. Real Electron saves an entry and reopens the unchanged values after restart. Hosted evidence covers Tier 1. | L0–L6 | solo | Open |
+| 2 | Import a bank CSV | CSV fixture tests prove detection, all mapping modes, dirty-row diagnosis, duplicate counts and 2,000 rows within five seconds. A failed write commits no rows. Browser preview and real Electron import through a preset file path pass on Tier 1. | L0–L6 | solo | Open |
+| 3 | Categories and rules | Category lifecycle and rule precedence pass domain and contract checks. Import, manual category assignment and applying rules to uncategorised entries pass browser journeys. Tier 1 stays green. | L0–L6 | solo | Open |
+| 4 | Monthly summary and budgets | Month boundaries, sign handling, uncategorised totals, and precise budgets pass domain checks. Changing month and persisting a category budget pass browser journeys. Tier 1 stays green. | L0–L6 | solo | Open |
+| 5 | Find, export, undo | Combined filters, lossless CSV round trip, and one-step undo of deletes, merges and imports pass domain and store checks. Browser filtering and real-shell file export, reimport and undo pass on Tier 1. | L0–L6 | solo | Open |
+| 6 | Release readiness | Version 0.1.0, dated changelog, matching release assets and SHA-256 checksums, green candidate CI and installer tests on every Tier 1 runner, and signing status are recorded before tagging. | L0–L7 | solo | Open |
 
 ## Rulings
 
